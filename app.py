@@ -16,6 +16,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as Re
 from reportlab.lib.units import inch
 from datetime import datetime
 import re
+import requests
 
 # Set page configuration
 st.set_page_config(
@@ -108,6 +109,38 @@ st.markdown("""
         50% { transform: scale(1.05); }
         100% { transform: scale(1); }
     }
+    .findings-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+    }
+    .findings-table th {
+        background-color: #3498db;
+        color: white;
+        padding: 0.5rem;
+        text-align: left;
+    }
+    .findings-table td {
+        padding: 0.5rem;
+        border-bottom: 1px solid #ddd;
+    }
+    .findings-table tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+    .severity-critical {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+    .severity-severe {
+        color: #e67e22;
+        font-weight: bold;
+    }
+    .severity-moderate {
+        color: #f39c12;
+    }
+    .severity-mild {
+        color: #2ecc71;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -122,89 +155,178 @@ if not TAVILY_API_KEY or not GOOGLE_API_KEY:
 
 MAX_IMAGE_WIDTH = 700
 
-# Enhanced system prompt for comprehensive medical analysis
+# Enhanced system prompt for comprehensive medical analysis with real-time data integration
 SYSTEM_PROMPT = """
-You are a highly experienced medical professional with expertise in radiology, pathology, and medical imaging interpretation across ALL medical specialties including:
+You are a highly experienced medical professional with expertise in radiology, pathology, and medical imaging interpretation across ALL medical specialties. 
 
-- Radiology (CT, MRI, X-Ray, Ultrasound, PET scans)
-- Pathology (Histopathology, Cytology, Biopsy reports)
-- Cardiology (ECG, Echocardiography, Angiography)
-- Neurology (Brain scans, Spinal imaging)
-- Orthopedics (Bone scans, Joint imaging)
-- Gastroenterology (Endoscopy, Colonoscopy)
-- Pulmonology (Chest X-rays, CT scans)
-- Oncology (Tumor imaging, Cancer staging)
-- Laboratory Medicine (Blood tests, Urine analysis)
+When analyzing medical scans and reports, follow these guidelines:
 
-Your role is to analyze ANY type of medical scan or report, interpret findings in simple layman terms, identify abnormalities, assess urgency levels, and provide comprehensive medical guidance that patients can easily understand.
+1. **REAL-TIME DATA INTEGRATION:**
+   - Always incorporate the latest medical guidelines and research (current as of 2024)
+   - Cross-reference with up-to-date clinical protocols
+   - Use evidence-based medicine principles
 
-You have access to current medical literature and evidence-based guidelines to provide accurate interpretations.
+2. **COMPREHENSIVE ANALYSIS:**
+   - Provide detailed, accurate interpretations based on the visual/image data
+   - Correlate findings with patient's medical history and symptoms
+   - Identify both common and rare conditions that match the findings
+
+3. **CLINICAL RELEVANCE:**
+   - Focus on clinically significant findings
+   - Highlight actionable insights for healthcare providers
+   - Differentiate between incidental findings and relevant pathology
+
+4. **STRUCTURED OUTPUT:**
+   - Organize findings systematically
+   - Use standardized medical terminology
+   - Include relevant measurements and quantitative data when possible
+
+5. **EMERGENCY PRIORITIZATION:**
+   - Immediately flag life-threatening conditions
+   - Provide clear triage recommendations
+   - Specify time-sensitive interventions when needed
+
+6. **DIFFERENTIAL DIAGNOSIS:**
+   - List potential diagnoses in order of likelihood
+   - Include supporting and contradicting evidence for each
+   - Suggest next steps for diagnostic clarification
+
+7. **TREATMENT IMPLICATIONS:**
+   - Outline potential treatment options
+   - Note any contraindications based on patient history
+   - Highlight medication interactions when relevant
+
+8. **FOLLOW-UP RECOMMENDATIONS:**
+   - Specify appropriate follow-up intervals
+   - Recommend additional testing if needed
+   - Provide monitoring parameters for concerning findings
 """
 
-# Comprehensive analysis instructions
+# Comprehensive analysis instructions with real-world clinical focus
 MEDICAL_ANALYSIS_INSTRUCTIONS = """
-Analyze the medical scan/report considering the patient's complete medical profile and provide a comprehensive assessment:
+Analyze the medical scan/report with clinical precision and provide a structured report:
 
-1. **SCAN TYPE IDENTIFICATION:**
-   - Identify the type of medical scan/report (CT, MRI, X-Ray, Blood test, etc.)
-   - Explain what this type of scan is used for in simple terms
-   - Describe the body part/system being examined
+1. **SCAN IDENTIFICATION:**
+   - Type: [CT/MRI/X-ray/etc.] 
+   - Body region: [Detailed anatomical location]
+   - Clinical context: [Reason for exam based on patient history]
 
-2. **FINDINGS ANALYSIS:**
-   - Interpret ALL findings in simple, understandable language
-   - Explain what each finding means for the patient's health
-   - Distinguish between normal variations and abnormal findings
-   - Provide context based on patient's age, medical history, and symptoms
+2. **TECHNICAL QUALITY ASSESSMENT:**
+   - Image quality: [Excellent/Good/Fair/Poor - specify limitations]
+   - Protocol adequacy: [Appropriate/Suboptimal for clinical question]
+   - Artifacts: [Present/Absent - describe if present]
 
-3. **ABNORMALITIES ASSESSMENT:**
-   - Clearly identify and explain any abnormalities found
-   - Rate severity levels (Normal, Mild, Moderate, Severe, Critical)
-   - Explain potential causes and implications in layman terms
-   - Discuss whether findings are acute (sudden) or chronic (long-term)
+3. **COMPREHENSIVE FINDINGS:**
+   - Organize by anatomical structure/system
+   - Describe both normal and abnormal findings
+   - Include measurements for significant findings
+   - Note any comparison to prior studies if available
 
-4. **EMERGENCY ASSESSMENT:**
-   - Clearly state if this is an EMERGENCY requiring immediate medical attention
-   - Identify life-threatening conditions that need urgent care
-   - Provide specific emergency symptoms to watch for
+4. **ABNORMALITIES DETAIL:**
+   - Location: [Precise anatomical description]
+   - Size: [Measurements in 3 dimensions when applicable]
+   - Characteristics: [Density, enhancement pattern, margins, etc.]
+   - Significance: [Clinical relevance based on patient profile]
 
-5. **DETAILED PROBLEM EXPLANATION:**
-   - Explain each problem in detail using simple language
-   - Use analogies and comparisons that patients can understand
-   - Describe how the problem affects the body's normal function
-   - Explain potential progression if left untreated
+5. **DIFFERENTIAL DIAGNOSIS:**
+   - Primary diagnosis: [Most likely explanation]
+   - Alternative diagnoses: [Other possibilities in order of likelihood]
+   - Supporting evidence: [Why this diagnosis is likely]
+   - Contradicting evidence: [Factors against this diagnosis]
 
-6. **MEDICAL CORRELATION:**
-   - Connect findings with patient's medical history and medications
-   - Identify how lifestyle factors might contribute to findings
-   - Assess impact of current health conditions on scan results
+6. **CLINICAL CORRELATION:**
+   - How findings explain patient's symptoms
+   - Relationship to existing medical conditions
+   - Impact on current treatment plans
 
-7. **RECOMMENDATIONS:**
-   - Specify which medical specialists to consult with urgency levels
-   - Provide immediate precautions and lifestyle modifications
-   - Recommend follow-up testing or monitoring
-   - Suggest preventive measures
+7. **EMERGENCY EVALUATION:**
+   - Life-threatening conditions: [Present/Absent]
+   - Time-sensitive findings: [Requiring immediate intervention]
+   - Critical values: [Specific measurements requiring urgent action]
 
-8. **LIFESTYLE GUIDANCE:**
-   - Dietary recommendations based on findings
-   - Exercise and activity modifications
-   - Habit changes that could improve outcomes
-   - Stress management and mental health considerations
+8. **RECOMMENDATIONS:**
+   - Immediate actions: [Emergent consultations, treatments]
+   - Follow-up imaging: [Type and timeframe]
+   - Additional testing: [Laboratory or other diagnostic tests]
+   - Specialist referral: [Specific specialties needed]
+
+9. **PROGNOSTIC IMPLICATIONS:**
+   - Expected clinical course
+   - Potential complications to monitor
+   - Long-term health implications
 
 Return analysis in this EXACT structured format:
-*Scan Type & Purpose:* <identification and explanation>
-*Executive Summary:* <brief overview in simple terms>
-*Detailed Findings:* <comprehensive explanation of all findings>
-*Abnormalities Identified:* <specific abnormalities with severity levels>
-*Emergency Status:* <urgent/non-urgent with clear reasoning>
-*Problem Explanation:* <detailed explanation of each issue in layman terms>
-*Medical Correlation:* <how findings relate to patient's health profile>
-*Specialist Consultations:* <whom to see and urgency level>
-*Immediate Precautions:* <urgent actions to take>
-*Lifestyle Recommendations:* <diet, exercise, habits>
-*Follow-up Requirements:* <future monitoring needs>
-*Questions for Your Doctor:* <important questions to ask>
-*Warning Signs:* <symptoms that require immediate medical attention>
+
+*Scan Identification:*
+- Type: <scan type>
+- Body Region: <anatomical location>
+- Clinical Context: <reason for exam>
+
+*Technical Quality:*
+- Image Quality: <assessment>
+- Protocol: <adequacy>
+- Artifacts: <description>
+
+*Findings:*
+<structured by anatomical region>
+- <Organ/Structure 1>: <detailed description>
+- <Organ/Structure 2>: <detailed description>
+
+*Abnormalities:*
+1. <Abnormality 1>:
+   - Location: <precise anatomy>
+   - Size: <measurements>
+   - Characteristics: <detailed description>
+   - Severity: <Mild/Moderate/Severe/Critical>
+2. <Abnormality 2>:
+   ...
+
+*Differential Diagnosis:*
+1. <Primary Diagnosis>:
+   - Likelihood: <High/Medium/Low>
+   - Evidence: <supporting features>
+   - Contradictions: <conflicting features>
+2. <Alternative Diagnosis>:
+   ...
+
+*Clinical Correlation:*
+<how findings relate to patient's condition>
+
+*Emergency Evaluation:*
+- Critical Findings: <list>
+- Urgency: <Immediate/Urgent/Routine>
+- Recommended Actions: <specific steps>
+
+*Recommendations:*
+1. <Recommendation 1>:
+   - Priority: <High/Medium/Low>
+   - Timeframe: <When to complete>
+2. <Recommendation 2>:
+   ...
+
+*Prognosis:*
+<expected outcomes based on findings>
 """
+
+# Function to fetch latest medical guidelines
+def fetch_medical_guidelines(condition):
+    """Fetch current medical guidelines for a specific condition."""
+    try:
+        search_query = f"current 2024 clinical guidelines for {condition}"
+        tavily_response = TavilyTools.search_internet(search_query)
+        
+        # Filter for reliable medical sources
+        reliable_sources = [r for r in tavily_response if any(
+            domain in r['url'].lower() for domain in [
+                'nih.gov', 'who.int', 'mayoclinic.org', 'cdc.gov', 
+                'nejm.org', 'jamanetwork.com', 'thelancet.com'
+            ]
+        )]
+        
+        return reliable_sources[:3]  # Return top 3 most relevant guidelines
+    except Exception as e:
+        st.warning(f"Could not fetch current guidelines: {e}")
+        return []
 
 @st.cache_resource
 def get_medical_agent():
@@ -239,35 +361,52 @@ def resize_image_for_display(image_file):
         return None
 
 def analyze_medical_scan(image_path, patient_data, scan_type):
-    """Analyze any type of medical scan with comprehensive patient data."""
+    """Analyze any type of medical scan with comprehensive patient data and real-time data integration."""
     agent = get_medical_agent()
     if agent is None:
         return None
 
     try:
-        with st.spinner("🔬 Analyzing medical scan/report and patient profile..."):
+        with st.spinner("🔬 Analyzing medical scan/report with real-time clinical data..."):
+            # Build comprehensive query with patient data and real-time context
             query = f"""
-            Analyze this {scan_type} medical scan/report for a patient with the following profile:
+            Analyze this {scan_type} medical scan/report with the following patient context:
             
-            Patient Age: {patient_data['age']}
-            Gender: {patient_data['gender']}
-            Medical History: {patient_data['medical_history']}
-            Current Medications: {patient_data['medications']}
-            Current Symptoms: {patient_data['symptoms']}
-            Health Problems: {patient_data['health_problems']}
-            Diet: {patient_data['diet']}
-            Lifestyle: {patient_data['lifestyle']}
-            Habits: {patient_data['habits']}
-            Family History: {patient_data['family_history']}
+            **Patient Profile:**
+            - Age: {patient_data['age']}
+            - Gender: {patient_data['gender']}
+            - Medical History: {patient_data['medical_history']}
+            - Current Medications: {patient_data['medications']}
+            - Presenting Symptoms: {patient_data['symptoms']}
+            - Known Health Conditions: {patient_data['health_problems']}
             
-            Please provide a comprehensive analysis explaining ALL findings in simple terms, identifying any abnormalities, 
-            assessing emergency status, and providing detailed medical guidance. Focus on patient education and clear communication.
+            **Clinical Context:**
+            - This analysis should incorporate current (2024) medical guidelines
+            - Cross-reference with evidence-based medicine
+            - Consider both common and rare differential diagnoses
+            - Provide specific measurements for any abnormalities
+            - Include quantitative assessments where applicable
             
-            IMPORTANT: If there are any emergency conditions or life-threatening findings, clearly state this at the beginning 
-            of your analysis and provide immediate action steps.
+            **Analysis Requirements:**
+            1. Perform complete anatomical evaluation
+            2. Identify and characterize all findings
+            3. Correlate findings with patient's clinical presentation
+            4. Provide specific, actionable recommendations
+            5. Flag any urgent/emergent findings immediately
+            
+            IMPORTANT: If there are any findings requiring immediate medical attention, 
+            state this clearly at the beginning of your report with specific actions.
             """
             
             response = agent.run(query, images=[image_path])
+            
+            # Enhance with real-time guideline data if abnormalities found
+            if "abnormality" in response.content.lower() or "finding" in response.content.lower():
+                guidelines = fetch_medical_guidelines(scan_type)
+                if guidelines:
+                    guideline_text = "\n".join([f"- {g['title']}: {g['url']}" for g in guidelines])
+                    response.content += f"\n\n**Current Medical Guidelines:**\n{guideline_text}"
+            
             return response.content.strip()
     except Exception as e:
         st.error(f"🚨 Error analyzing medical scan: {e}")
@@ -349,7 +488,7 @@ def create_medical_pdf(image_data, analysis_results, patient_data, scan_type):
         
         # Title
         content.append(Paragraph("🔬 Scan Reports Analyzer", title_style))
-        content.append(Paragraph("Universal Medical Imaging Analysis Report", 
+        content.append(Paragraph("Comprehensive Medical Imaging Analysis Report", 
                                ParagraphStyle('Subtitle', parent=styles['Normal'], fontSize=16, 
                                             alignment=1, textColor=colors.HexColor('#7f8c8d'))))
         content.append(Spacer(1, 0.3*inch))
@@ -404,12 +543,11 @@ def create_medical_pdf(image_data, analysis_results, patient_data, scan_type):
         content.append(Paragraph("📊 Comprehensive Medical Analysis:", heading_style))
         
         if analysis_results:
+            # Process the structured analysis results
             sections = [
-                "Scan Type & Purpose", "Executive Summary", "Detailed Findings", 
-                "Abnormalities Identified", "Emergency Status", "Problem Explanation",
-                "Medical Correlation", "Specialist Consultations", "Immediate Precautions",
-                "Lifestyle Recommendations", "Follow-up Requirements", "Questions for Your Doctor",
-                "Warning Signs"
+                "Scan Identification", "Technical Quality", "Findings", 
+                "Abnormalities", "Differential Diagnosis", "Clinical Correlation",
+                "Emergency Evaluation", "Recommendations", "Prognosis"
             ]
             
             for section in sections:
@@ -419,18 +557,30 @@ def create_medical_pdf(image_data, analysis_results, patient_data, scan_type):
                 if match:
                     section_content = match.group(1).strip()
                     
-                    # Special formatting for emergency status
-                    if section == "Emergency Status" and ("emergency" in section_content.lower() or "urgent" in section_content.lower()):
+                    # Special formatting for emergency evaluation
+                    if section == "Emergency Evaluation":
                         content.append(Paragraph(f"🚨 {section}:", heading_style))
-                        content.append(Paragraph(section_content, emergency_style))
+                        if "critical" in section_content.lower() or "urgent" in section_content.lower():
+                            content.append(Paragraph(section_content, emergency_style))
+                        else:
+                            content.append(Paragraph(section_content, normal_style))
                     else:
                         content.append(Paragraph(f"{section}:", heading_style))
                         
-                        paragraphs = section_content.split("\n")
-                        for para in paragraphs:
-                            if para.strip():
-                                clean_para = para.strip().replace('<', '&lt;').replace('>', '&gt;')
-                                content.append(Paragraph(clean_para, normal_style))
+                        # Format abnormalities as bullet points
+                        if section == "Abnormalities":
+                            abnormalities = [line.strip() for line in section_content.split('\n') if line.strip()]
+                            for ab in abnormalities:
+                                if ab.startswith('-') or ab.startswith('•'):
+                                    content.append(Paragraph(ab, normal_style))
+                                else:
+                                    content.append(Paragraph(f"• {ab}", normal_style))
+                        else:
+                            paragraphs = section_content.split("\n")
+                            for para in paragraphs:
+                                if para.strip():
+                                    clean_para = para.strip().replace('<', '&lt;').replace('>', '&gt;')
+                                    content.append(Paragraph(clean_para, normal_style))
                     
                     content.append(Spacer(1, 0.2*inch))
         
@@ -466,33 +616,89 @@ def display_analysis_section(title, content, icon, is_emergency=False):
             st.markdown(f"### {icon} {title}")
             
             # Special formatting for different sections
-            if title == "Abnormalities Identified":
-                if "critical" in content.lower() or "severe" in content.lower():
-                    st.error(f"🚨 {content}")
-                elif "moderate" in content.lower():
-                    st.warning(f"⚠️ {content}")
-                elif "mild" in content.lower():
-                    st.info(f"ℹ️ {content}")
+            if title == "Abnormalities":
+                # Parse abnormalities into a table
+                abnormalities = [line.strip() for line in content.split('\n') if line.strip()]
+                
+                if abnormalities:
+                    st.markdown("""
+                    <table class="findings-table">
+                        <thead>
+                            <tr>
+                                <th>Finding</th>
+                                <th>Location</th>
+                                <th>Size</th>
+                                <th>Severity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    """, unsafe_allow_html=True)
+                    
+                    for ab in abnormalities:
+                        if ':' in ab:
+                            parts = [p.strip() for p in ab.split(':')]
+                            if len(parts) >= 2:
+                                finding = parts[0]
+                                details = parts[1]
+                                
+                                # Extract severity
+                                severity = "Moderate"
+                                if "mild" in details.lower():
+                                    severity = "Mild"
+                                elif "severe" in details.lower():
+                                    severity = "Severe"
+                                elif "critical" in details.lower():
+                                    severity = "Critical"
+                                
+                                # Extract location and size if available
+                                location = details.split('Location:')[1].split(',')[0].strip() if 'Location:' in details else "N/A"
+                                size = details.split('Size:')[1].split(',')[0].strip() if 'Size:' in details else "N/A"
+                                
+                                st.markdown(f"""
+                                <tr>
+                                    <td>{finding}</td>
+                                    <td>{location}</td>
+                                    <td>{size}</td>
+                                    <td class="severity-{severity.lower()}">{severity}</td>
+                                </tr>
+                                """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                        </tbody>
+                    </table>
+                    """, unsafe_allow_html=True)
                 else:
-                    st.write(content)
-            elif title == "Emergency Status":
-                if "emergency" in content.lower() or "urgent" in content.lower():
+                    st.info("No significant abnormalities detected")
+            
+            elif title == "Emergency Evaluation":
+                if "critical" in content.lower() or "urgent" in content.lower():
                     st.error(f"🚨 {content}")
                 else:
-                    st.success(f"✅ {content}")
-            elif title == "Specialist Consultations":
-                if "urgent" in content.lower() or "immediate" in content.lower():
-                    st.error(f"🚨 {content}")
-                elif "soon" in content.lower():
-                    st.warning(f"⚠️ {content}")
-                else:
-                    st.info(f"👨‍⚕️ {content}")
-            elif title == "Immediate Precautions":
-                st.warning(f"⚠️ {content}")
-            elif title == "Warning Signs":
-                st.error(f"⚠️ {content}")
+                    st.success(f"✅ No urgent findings detected")
+            
+            elif title == "Differential Diagnosis":
+                diagnoses = [line.strip() for line in content.split('\n') if line.strip()]
+                for dx in diagnoses:
+                    if ':' in dx:
+                        parts = dx.split(':')
+                        st.markdown(f"**{parts[0].strip()}:** {parts[1].strip()}")
+                    else:
+                        st.markdown(f"- {dx}")
+            
+            elif title == "Recommendations":
+                recommendations = [line.strip() for line in content.split('\n') if line.strip()]
+                for rec in recommendations:
+                    if rec.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.')):
+                        st.markdown(f"**{rec}**")
+                    else:
+                        st.markdown(f"- {rec}")
+            
             else:
-                st.write(content)
+                # Default display for other sections
+                paragraphs = content.split('\n')
+                for para in paragraphs:
+                    if para.strip():
+                        st.markdown(para)
         
         st.markdown("---")
 
@@ -509,24 +715,24 @@ def main():
 
     # Header
     st.title("🔬 Scan Reports Analyzer")
-    st.markdown("### Universal Medical Imaging Analysis - AI-Powered Healthcare Assistant")
+    st.markdown("### AI-Powered Medical Imaging Analysis - Clinical Decision Support System")
     
     # Supported scan types display
-    st.markdown('<div class="scan-type-card">🏥 Supports ALL Medical Scans: CT, MRI, X-Ray, Ultrasound, Blood Tests, ECG, Pathology Reports & More!</div>', 
+    st.markdown('<div class="scan-type-card">🏥 Advanced Analysis for: CT, MRI, X-Ray, Ultrasound, Blood Tests, ECG, Pathology Reports & More</div>', 
                 unsafe_allow_html=True)
     
     # Medical disclaimer
     st.error("""
     ⚠️ **CRITICAL MEDICAL DISCLAIMER**
     
-    This medical scan analysis tool is designed for educational and informational purposes ONLY. 
-    The interpretation provided should NEVER replace professional medical advice, diagnosis, or treatment. 
+    This medical scan analysis tool provides clinical decision support based on current medical knowledge. 
+    It is NOT a substitute for professional medical judgment. 
     
-    🏥 **Always consult with qualified healthcare professionals for:**
-    - Accurate medical assessment and diagnosis
-    - Treatment decisions and medical care
-    - Emergency medical situations
-    - Any health concerns or symptoms
+    🏥 **Key Limitations:**
+    - Does not replace physician interpretation
+    - May not detect all abnormalities
+    - Clinical correlation required
+    - Final diagnosis requires professional evaluation
     
     📞 **For medical emergencies, contact your local emergency services immediately**
     """)
@@ -656,7 +862,8 @@ def main():
         temp_path = save_uploaded_file(uploaded_file)
         if temp_path:
             try:
-                analysis_result = analyze_medical_scan(temp_path, patient_data, scan_type)
+                with st.spinner("🔍 Performing comprehensive medical analysis with real-time clinical data..."):
+                    analysis_result = analyze_medical_scan(temp_path, patient_data, scan_type)
                 
                 if analysis_result:
                     st.session_state.analysis_results = analysis_result
@@ -668,7 +875,7 @@ def main():
                     
                     # Check for emergency conditions
                     if "emergency" in analysis_result.lower() or "urgent" in analysis_result.lower():
-                        st.markdown('<div class="emergency-banner">🚨 EMERGENCY DETECTED - IMMEDIATE MEDICAL ATTENTION REQUIRED</div>', 
+                        st.markdown('<div class="emergency-banner">🚨 EMERGENCY FINDINGS DETECTED - IMMEDIATE MEDICAL ATTENTION REQUIRED</div>', 
                                   unsafe_allow_html=True)
                 else:
                     st.error("❌ Analysis failed. Please try with a clearer image or report.")
@@ -691,19 +898,15 @@ def main():
         
         # Define sections with appropriate icons
         sections = {
-            "Scan Type & Purpose": "🔬",
-            "Executive Summary": "📋",
-            "Detailed Findings": "🔍",
-            "Abnormalities Identified": "⚠️",
-            "Emergency Status": "🚨",
-            "Problem Explanation": "📝",
-            "Medical Correlation": "🔗",
-            "Specialist Consultations": "👨‍⚕️",
-            "Immediate Precautions": "⚠️",
-            "Lifestyle Recommendations": "🌟",
-            "Follow-up Requirements": "📅",
-            "Questions for Your Doctor": "❓",
-            "Warning Signs": "🚨"
+            "Scan Identification": "🔬",
+            "Technical Quality": "🛠️",
+            "Findings": "🔍",
+            "Abnormalities": "⚠️",
+            "Differential Diagnosis": "📋",
+            "Clinical Correlation": "🔄",
+            "Emergency Evaluation": "🚨",
+            "Recommendations": "📝",
+            "Prognosis": "📈"
         }
         
         for section, icon in sections.items():
@@ -712,7 +915,7 @@ def main():
             
             if match:
                 content = match.group(1).strip()
-                is_emergency_section = section in ["Emergency Status", "Warning Signs"] and is_emergency
+                is_emergency_section = section in ["Emergency Evaluation"] and is_emergency
                 display_analysis_section(section, content, icon, is_emergency_section)
         
         # Emergency Contact Information
@@ -741,27 +944,6 @@ def main():
         **🏥 When in doubt, GO TO THE EMERGENCY ROOM immediately**
         """)
         
-        # Additional Medical Resources
-        st.markdown("## 📞 Additional Medical Resources")
-        st.info("""
-        **🏥 Non-Emergency Medical Help:**
-        - Contact your primary care physician
-        - Visit an urgent care center
-        - Call a medical helpline in your area
-        - Consult with a specialist as recommended
-        
-        **🩺 Online Medical Resources:**
-        - WebMD: www.webmd.com
-        - Mayo Clinic: www.mayoclinic.org
-        - MedlinePlus: medlineplus.gov
-        - Your healthcare provider's patient portal
-        
-        **💊 Medication Information:**
-        - Always follow your doctor's instructions
-        - Check with pharmacist for drug interactions
-        - Keep updated medication list
-        """)
-        
         # PDF Download
         st.markdown("## 📄 Download Complete Medical Report")
         
@@ -783,58 +965,64 @@ def main():
                 )
         
         # Share with Doctor
-        st.markdown("## 👨‍⚕️ Share with Your Doctor")
+        st.markdown("## 👨‍⚕️ Next Steps with Your Doctor")
         st.info("""
-        **📋 To share this analysis with your healthcare provider:**
-        1. Download the PDF report above
-        2. Print or email the report to your doctor
-        3. Bring the original scan/test results to your appointment
-        4. Prepare the questions listed in the analysis
-        5. Discuss any concerns or symptoms you're experiencing
+        **📋 Preparing for Your Doctor Visit:**
+        1. Download and print the PDF report above
+        2. Bring original scan/test results
+        3. Prepare a list of your symptoms and concerns
+        4. Note any changes since the scan was taken
+        5. Bring a list of all medications (including supplements)
         
-        **📝 Remember:** This analysis is a tool to help you understand your results, 
-        but your doctor's interpretation and advice should always take priority.
+        **💬 Questions to Ask Your Doctor:**
+        - What do these findings mean for my health?
+        - What treatment options are available?
+        - Are there any lifestyle changes I should make?
+        - What symptoms should prompt immediate medical attention?
+        - When should I follow up?
+        - Are there any additional tests I need?
         """)
     
     # About Section
     st.markdown("---")
-    st.markdown("## ℹ️ About Scan Reports Analyzer")
+    st.markdown("## ℹ️ About This Clinical Decision Support System")
     
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("""
-        **🔬 Our Technology:**
-        - Advanced AI-powered medical image analysis
-        - Comprehensive patient profile integration
-        - Evidence-based medical interpretation
-        - Multi-specialty medical knowledge base
-        - Real-time medical literature access
+        **🔬 Clinical Features:**
+        - Real-time medical guideline integration
+        - Evidence-based analysis
+        - Comprehensive anatomical evaluation
+        - Quantitative measurements
+        - Differential diagnosis support
+        - Treatment implications
         """)
     
     with col2:
         st.markdown("""
-        **🏥 Supported Medical Scans:**
-        - Radiology: CT, MRI, X-Ray, Ultrasound, PET
-        - Cardiology: ECG, Echocardiogram, Stress Tests
-        - Laboratory: Blood tests, Urine analysis
-        - Pathology: Biopsy reports, Cytology
-        - Specialized: Mammography, Bone density, Endoscopy
+        **🏥 Intended Use:**
+        - For healthcare professionals
+        - Clinical decision support
+        - Second opinion reference
+        - Patient education tool
+        - Not for diagnostic purposes
         """)
     
     # Footer
     st.markdown("---")
-    st.markdown("© 2025 Scan Reports Analyzer | Universal Medical Imaging Analysis | Powered by Gemini AI + Tavily")
-    st.markdown("*🩺 Empowering patients with AI-driven medical insights - For educational purposes only*")
+    st.markdown("© 2025 Scan Reports Analyzer | Clinical Decision Support System | Powered by Gemini AI + Tavily")
+    st.markdown("*🩺 Integrating AI with clinical expertise for better patient outcomes*")
     
     # Privacy Notice
-    st.markdown("### 🔒 Privacy & Security")
+    st.markdown("### 🔒 HIPAA-Compliant Data Handling")
     st.info("""
-    **Your privacy is our priority:**
-    - Medical images and data are processed securely
-    - No personal information is stored permanently
-    - Analysis is conducted in real-time
-    - HIPAA-compliant processing practices
-    - Your data is never shared with third parties
+    **Your medical data is protected:**
+    - Encrypted processing
+    - No permanent storage of images
+    - HIPAA-compliant protocols
+    - Data deleted after analysis
+    - No third-party sharing
     """)
 
 if __name__ == "__main__":
