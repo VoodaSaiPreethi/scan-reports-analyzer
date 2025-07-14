@@ -111,22 +111,6 @@ st.markdown("""
         flex-direction: column;
         gap: 1rem;
     }
-    
-    .doctor-card {
-        background-color: #F0FFF0;
-        border: 1px solid #98FB98;
-        border-radius: 8px;
-        padding: 0.5rem;
-        margin: 0.5rem 0;
-    }
-    
-    .condition-card {
-        background-color: #F0F8FF;
-        border: 1px solid #87CEFA;
-        border-radius: 8px;
-        padding: 0.5rem;
-        margin: 0.5rem 0;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -153,7 +137,6 @@ You must:
 5. Determine if the condition requires immediate medical attention
 6. Consider the patient's complete medical history, lifestyle, and family history in your analysis
 7. Provide specific recommendations for specialist consultations when needed
-8. List possible diseases or conditions that match the findings
 """
 
 MEDICAL_ANALYSIS_INSTRUCTIONS = """
@@ -170,7 +153,6 @@ Analyze the medical scan report and provide a comprehensive analysis in the foll
 *Emergency Indicators:* <symptoms that require immediate medical help>
 *Follow-up Requirements:* <when to get re-tested or follow-up scans>
 *Prognosis:* <what to expect going forward>
-*Possible Diseases:* <list of possible diseases that match these findings>
 
 Always prioritize patient safety and provide clear, actionable advice.
 """
@@ -188,7 +170,6 @@ Provide a detailed, personalized health assessment that considers:
 - Current symptoms and concerns
 
 Deliver a holistic health report with personalized recommendations, risk assessments, and actionable health advice.
-Include specific specialist recommendations and possible disease diagnoses based on all available information.
 """
 
 @st.cache_resource
@@ -273,7 +254,6 @@ def comprehensive_health_analysis(scan_results, patient_info):
             
             Provide a detailed, personalized health assessment with specific recommendations, risk factors, and actionable advice.
             Consider all aspects of the patient's health profile in your analysis.
-            Include specific specialist recommendations and possible disease diagnoses.
             """
             response = agent.run(query)
             return response.content.strip()
@@ -528,108 +508,6 @@ def display_emergency_alert(content):
         return True
     return False
 
-def display_doctor_recommendations(content):
-    """Display doctor recommendations in a structured format."""
-    doctors_db = {
-        "Cardiologist": "Specializes in heart and cardiovascular system disorders",
-        "Neurologist": "Treats brain and nervous system disorders",
-        "Orthopedist": "Specializes in bones, joints, and muscles",
-        "Rheumatologist": "Treats arthritis and autoimmune diseases",
-        "Endocrinologist": "Specializes in hormonal and metabolic disorders",
-        "Gastroenterologist": "Treats digestive system disorders",
-        "Pulmonologist": "Specializes in lung and respiratory conditions",
-        "Nephrologist": "Treats kidney diseases",
-        "Hematologist": "Specializes in blood disorders",
-        "Oncologist": "Diagnoses and treats cancer",
-        "Dermatologist": "Treats skin conditions",
-        "Urologist": "Specializes in urinary and male reproductive system",
-        "Gynecologist": "Focuses on female reproductive health",
-        "ENT Specialist": "Treats ear, nose, and throat conditions",
-        "Ophthalmologist": "Specializes in eye diseases and vision problems",
-        "Psychiatrist": "Treats mental health disorders",
-        "Allergist/Immunologist": "Treats allergies and immune system disorders",
-        "Infectious Disease Specialist": "Treats complex infections",
-        "Geriatrician": "Specializes in elderly patient care",
-        "Pediatrician": "Specializes in child healthcare"
-    }
-    
-    recommended_doctors = []
-    for doc in doctors_db:
-        if doc.lower() in content.lower():
-            recommended_doctors.append((doc, doctors_db[doc]))
-    
-    if recommended_doctors:
-        st.markdown('<div class="info-card">', unsafe_allow_html=True)
-        st.markdown("### 🏥 Recommended Specialist Doctors")
-        st.markdown("Based on your condition, you should consider consulting these specialists:")
-        
-        for doc, desc in recommended_doctors:
-            st.markdown(f"""
-            <div class="doctor-card">
-                <b>{doc}</b>: {desc}
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.info("ℹ️ The analysis recommends specialist consultation but didn't specify which type. Please consult with your primary care physician for referral.")
-
-def display_possible_conditions(content):
-    """Display possible diseases/conditions in a structured format."""
-    conditions_db = {
-        "Hypertension": "High blood pressure that can lead to heart disease",
-        "Diabetes": "Chronic condition affecting blood sugar regulation",
-        "Arthritis": "Inflammation of joints causing pain and stiffness",
-        "Osteoporosis": "Bone weakening increasing fracture risk",
-        "COPD": "Chronic obstructive pulmonary disease (lung condition)",
-        "Asthma": "Chronic inflammatory disease of the airways",
-        "Coronary Artery Disease": "Narrowing of heart arteries",
-        "Stroke": "Brain damage from interrupted blood supply",
-        "Cancer": "Abnormal cell growth with potential to spread",
-        "Kidney Disease": "Impaired kidney function",
-        "Liver Disease": "Conditions affecting liver function",
-        "Thyroid Disorder": "Overactive or underactive thyroid",
-        "Anemia": "Low red blood cell count or hemoglobin",
-        "Osteoarthritis": "Joint cartilage breakdown",
-        "Rheumatoid Arthritis": "Autoimmune joint inflammation",
-        "Gastritis": "Stomach lining inflammation",
-        "Ulcerative Colitis": "Inflammatory bowel disease",
-        "Diverticulitis": "Infection or inflammation of colon pouches",
-        "Pneumonia": "Lung infection inflaming air sacs",
-        "Bronchitis": "Inflammation of bronchial tubes",
-        "Alzheimer's Disease": "Progressive brain disorder affecting memory",
-        "Parkinson's Disease": "Neurological disorder affecting movement",
-        "Multiple Sclerosis": "Autoimmune disease affecting central nervous system",
-        "Lupus": "Autoimmune disease affecting multiple organs",
-        "HIV/AIDS": "Viral infection compromising immune system",
-        "Hepatitis": "Liver inflammation from viral infection",
-        "Tuberculosis": "Bacterial infection primarily affecting lungs",
-        "Malaria": "Parasitic disease transmitted by mosquitoes",
-        "Dengue Fever": "Viral infection transmitted by mosquitoes",
-        "COVID-19": "Respiratory illness caused by coronavirus"
-    }
-    
-    detected_conditions = []
-    for condition in conditions_db:
-        if condition.lower() in content.lower():
-            detected_conditions.append((condition, conditions_db[condition]))
-    
-    if detected_conditions:
-        st.markdown('<div class="info-card">', unsafe_allow_html=True)
-        st.markdown("### 📋 Possible Diseases/Conditions")
-        st.markdown("The following conditions may be present based on your scan:")
-        
-        for condition, desc in detected_conditions:
-            st.markdown(f"""
-            <div class="condition-card">
-                <b>{condition}</b>: {desc}
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.info("ℹ️ The analysis detected abnormalities but didn't specify exact conditions. Further diagnostic tests may be needed.")
-
 def main():
     # Initialize session state
     if 'scan_analysis' not in st.session_state:
@@ -731,7 +609,7 @@ def main():
             "Scan Analysis", "Detected Conditions", "Condition Explanation", 
             "Severity Assessment", "Immediate Concerns", "Recommended Precautions",
             "Lifestyle Modifications", "Specialist Consultations", "Emergency Indicators",
-            "Follow-up Requirements", "Prognosis", "Possible Diseases"
+            "Follow-up Requirements", "Prognosis"
         ]
         
         for section in sections:
@@ -753,8 +631,7 @@ def main():
                     "Specialist Consultations": "👨‍⚕️",
                     "Emergency Indicators": "🚨",
                     "Follow-up Requirements": "📅",
-                    "Prognosis": "🔮",
-                    "Possible Diseases": "📋"
+                    "Prognosis": "🔮"
                 }
                 
                 st.markdown(f"**{icons.get(section, '📋')} {section}:**")
@@ -764,14 +641,6 @@ def main():
                     display_emergency_alert(content)
                 else:
                     st.write(content)
-                
-                # Enhanced display for Specialist Consultations
-                if section == "Specialist Consultations" and content:
-                    display_doctor_recommendations(content)
-                
-                # Enhanced display for Possible Diseases
-                if section == "Possible Diseases" and content:
-                    display_possible_conditions(content)
                 
                 st.markdown("---")
         
