@@ -19,97 +19,310 @@ import re
 
 # Set page configuration
 st.set_page_config(
-    page_title="MediScan - Medical Report Analyzer",
+    page_title="MediScan Pro - Medical Report Analyzer",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
     page_icon="🏥"
 )
 
-# Custom CSS for nude/light theme
+# Custom CSS for animated theme
 st.markdown("""
 <style>
-    .main {
-        background-color: #FAF9F6;
-        padding: 2rem;
-    }
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
+    /* Global Styles */
     .stApp {
-        background-color: #F5F5DC;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        font-family: 'Inter', sans-serif;
     }
     
-    .stTitle {
-        color: #8B4513;
-        text-align: center;
-        font-family: 'Arial', sans-serif;
+    /* Header Animation */
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 15px;
         margin-bottom: 2rem;
+        animation: fadeInDown 1s ease-out;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     }
     
-    .stSubheader {
-        color: #A0522D;
-        font-family: 'Arial', sans-serif;
-        margin-top: 1.5rem;
-        margin-bottom: 1rem;
+    .main-header h1 {
+        color: white;
+        text-align: center;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
     
+    .main-header p {
+        color: rgba(255,255,255,0.9);
+        text-align: center;
+        font-size: 1.1rem;
+        margin: 0;
+    }
+    
+    /* Card Animations */
+    .analysis-card {
+        background: rgba(255,255,255,0.95);
+        padding: 2rem;
+        border-radius: 15px;
+        margin: 1rem 0;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
+        animation: slideInUp 0.8s ease-out;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .analysis-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    }
+    
+    .input-section {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        margin: 1rem 0;
+        animation: fadeInLeft 1s ease-out;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    
+    .results-section {
+        background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        margin: 1rem 0;
+        animation: fadeInRight 1s ease-out;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    
+    /* Progress Bar Animation */
+    .progress-container {
+        background: rgba(255,255,255,0.3);
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 1rem 0;
+        animation: pulse 2s infinite;
+    }
+    
+    /* Emergency Alert */
+    .emergency-alert {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        animation: emergencyPulse 1.5s infinite;
+        text-align: center;
+        font-weight: 600;
+    }
+    
+    .normal-status {
+        background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        animation: normalGlow 2s infinite;
+        text-align: center;
+        font-weight: 600;
+    }
+    
+    /* Sidebar Styling */
+    .css-1d391kg {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    }
+    
+    /* Input Field Enhancements */
     .stTextInput > div > div > input {
-        background-color: #FFF8DC;
-        border: 1px solid #D2B48C;
-        border-radius: 8px;
-        padding: 0.5rem;
+        border-radius: 10px;
+        border: 2px solid #e3f2fd;
+        transition: border-color 0.3s ease;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
     }
     
     .stTextArea > div > div > textarea {
-        background-color: #FFF8DC;
-        border: 1px solid #D2B48C;
-        border-radius: 8px;
-        padding: 0.5rem;
+        border-radius: 10px;
+        border: 2px solid #e3f2fd;
+        transition: border-color 0.3s ease;
     }
     
-    .stSelectbox > div > div > select {
-        background-color: #FFF8DC;
-        border: 1px solid #D2B48C;
-        border-radius: 8px;
+    .stTextArea > div > div > textarea:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
     }
     
+    /* Button Animations */
     .stButton > button {
-        background-color: #DEB887;
-        color: #8B4513;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
         border: none;
-        border-radius: 8px;
-        padding: 0.5rem 1rem;
-        font-weight: bold;
-        transition: background-color 0.3s;
+        border-radius: 10px;
+        padding: 0.7rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     }
     
     .stButton > button:hover {
-        background-color: #D2B48C;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
     }
     
-    .info-card {
-        background-color: #FFF8DC;
-        border: 1px solid #D2B48C;
-        border-radius: 10px;
+    /* Section Headers */
+    .section-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
         padding: 1rem;
-        margin: 1rem 0;
-    }
-    
-    .emergency-alert {
-        background-color: #FFE4E1;
-        border: 2px solid #CD5C5C;
         border-radius: 10px;
-        padding: 1rem;
         margin: 1rem 0;
+        text-align: center;
+        font-weight: 600;
+        animation: slideInDown 0.8s ease-out;
     }
     
-    .section-divider {
-        border-bottom: 2px solid #D2B48C;
-        margin: 2rem 0;
+    /* Keyframe Animations */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
     
-    .linear-layout {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes fadeInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    @keyframes fadeInRight {
+        from {
+            opacity: 0;
+            transform: translateX(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    @keyframes slideInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.02);
+        }
+        100% {
+            transform: scale(1);
+        }
+    }
+    
+    @keyframes emergencyPulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+        }
+    }
+    
+    @keyframes normalGlow {
+        0% {
+            box-shadow: 0 0 5px rgba(0, 184, 148, 0.5);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(0, 184, 148, 0.8);
+        }
+        100% {
+            box-shadow: 0 0 5px rgba(0, 184, 148, 0.5);
+        }
+    }
+    
+    /* Hide Streamlit elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Custom spacing */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    
+    /* Medical Icons */
+    .medical-icon {
+        font-size: 2rem;
+        margin-right: 1rem;
+        vertical-align: middle;
+    }
+    
+    /* Status Indicators */
+    .status-normal {
+        color: #00b894;
+        font-weight: 600;
+    }
+    
+    .status-warning {
+        color: #fdcb6e;
+        font-weight: 600;
+    }
+    
+    .status-critical {
+        color: #e17055;
+        font-weight: 600;
+    }
+    
+    .status-emergency {
+        color: #d63031;
+        font-weight: 600;
+        animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+        50% {
+            opacity: 0.5;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -125,51 +338,47 @@ if not TAVILY_API_KEY or not GOOGLE_API_KEY:
 
 MAX_IMAGE_WIDTH = 400
 
-MEDICAL_SCAN_SYSTEM_PROMPT = """
-You are an expert medical diagnostician and radiologist with extensive knowledge in medical imaging interpretation and patient care.
-Your role is to analyze medical scan reports (X-rays, CT scans, MRIs, ultrasounds, blood tests, etc.) and provide comprehensive medical insights.
+MEDICAL_ANALYSIS_PROMPT = """
+You are a highly experienced medical AI assistant specializing in medical scan analysis and comprehensive health assessment.
+Your role is to analyze medical scan reports (X-rays, MRIs, CT scans, blood tests, etc.) and provide detailed, accurate medical insights.
 
-You must:
-1. Identify and explain medical conditions found in the scan in simple, layman-friendly language
-2. Assess severity and urgency of findings
-3. Provide detailed explanations of what the conditions mean for the patient's health
-4. Suggest appropriate precautions and lifestyle modifications
-5. Determine if the condition requires immediate medical attention
-6. Consider the patient's complete medical history, lifestyle, and family history in your analysis
-7. Provide specific recommendations for specialist consultations when needed
+IMPORTANT INSTRUCTIONS:
+1. Analyze the medical scan/report thoroughly
+2. Identify specific medical conditions, abnormalities, or diseases
+3. Provide detailed explanations in simple, layman language
+4. Assess severity levels (Normal, Mild, Moderate, Severe, Emergency)
+5. Consider patient's medical history, lifestyle, and medications
+6. Provide specific precautions and recommendations
+7. Determine if emergency consultation is needed
+8. Suggest appropriate medical specialists to consult
+
+ANALYSIS STRUCTURE:
+- Primary Diagnosis: [Specific condition/disease name]
+- Severity Level: [Normal/Mild/Moderate/Severe/Emergency]
+- Detailed Explanation: [Simple language explanation]
+- Probable Causes: [Based on scan and patient history]
+- Symptoms to Watch: [What patient should monitor]
+- Immediate Actions: [What to do right now]
+- Precautions: [Lifestyle changes, things to avoid]
+- Follow-up Required: [When and what type]
+- Specialist Consultation: [Which doctor to see]
+- Emergency Indicators: [When to seek immediate help]
+
+Always prioritize patient safety and provide accurate, evidence-based medical information.
 """
 
-MEDICAL_ANALYSIS_INSTRUCTIONS = """
-Analyze the medical scan report and provide a comprehensive analysis in the following structured format:
+PATIENT_HISTORY_PROMPT = """
+You are a medical AI assistant specializing in comprehensive patient assessment.
+Analyze the patient's complete medical profile including:
+- Medical scan results
+- Personal medical history
+- Current medications
+- Lifestyle factors
+- Family medical history
+- Recent accidents or injuries
 
-*Scan Analysis:* <detailed analysis of what the scan shows>
-*Detected Conditions:* <list of medical conditions or abnormalities found>
-*Condition Explanation:* <explain each condition in simple, understandable language>
-*Severity Assessment:* <rate severity: Low/Moderate/High/Critical>
-*Immediate Concerns:* <any urgent issues that need immediate attention>
-*Recommended Precautions:* <specific precautions to take>
-*Lifestyle Modifications:* <diet, exercise, habits to change>
-*Specialist Consultations:* <which doctors to consult and when>
-*Emergency Indicators:* <symptoms that require immediate medical help>
-*Follow-up Requirements:* <when to get re-tested or follow-up scans>
-*Prognosis:* <what to expect going forward>
-
-Always prioritize patient safety and provide clear, actionable advice.
-"""
-
-COMPREHENSIVE_ANALYSIS_PROMPT = """
-You are a comprehensive medical advisor analyzing a patient's complete health profile including scan results, medical history, lifestyle, and family history.
-
-Provide a detailed, personalized health assessment that considers:
-- Current scan findings
-- Patient's medical history and current medications
-- Age-related health considerations
-- Lifestyle factors (diet, exercise, habits)
-- Family medical history and genetic predispositions
-- Previous accidents or injuries
-- Current symptoms and concerns
-
-Deliver a holistic health report with personalized recommendations, risk assessments, and actionable health advice.
+Provide a holistic health assessment considering all factors and their interactions.
+Focus on identifying risk factors, potential complications, and personalized recommendations.
 """
 
 @st.cache_resource
@@ -178,8 +387,7 @@ def get_medical_agent():
     try:
         return Agent(
             model=Gemini(id="gemini-2.0-flash-exp", api_key=GOOGLE_API_KEY),
-            system_prompt=MEDICAL_SCAN_SYSTEM_PROMPT,
-            instructions=MEDICAL_ANALYSIS_INSTRUCTIONS,
+            system_prompt=MEDICAL_ANALYSIS_PROMPT,
             tools=[TavilyTools(api_key=TAVILY_API_KEY)],
             markdown=True,
         )
@@ -193,7 +401,7 @@ def get_comprehensive_agent():
     try:
         return Agent(
             model=Gemini(id="gemini-2.0-flash-exp", api_key=GOOGLE_API_KEY),
-            system_prompt=COMPREHENSIVE_ANALYSIS_PROMPT,
+            system_prompt=PATIENT_HISTORY_PROMPT,
             tools=[TavilyTools(api_key=TAVILY_API_KEY)],
             markdown=True,
         )
@@ -219,15 +427,17 @@ def resize_image_for_display(image_file):
         return None
 
 def analyze_medical_scan(image_path):
-    """Analyze medical scan report using AI."""
+    """Analyze medical scan using AI."""
     agent = get_medical_agent()
     if agent is None:
         return None
 
     try:
-        with st.spinner("🔬 Analyzing medical scan report..."):
+        with st.spinner("🔬 Analyzing medical scan..."):
             response = agent.run(
-                "Analyze this medical scan report and provide a comprehensive medical analysis including condition explanation, severity assessment, and recommendations.",
+                """Analyze this medical scan report thoroughly. Identify specific medical conditions, 
+                assess severity, explain in simple terms, and provide detailed recommendations including 
+                emergency indicators and specialist consultation needs.""",
                 images=[image_path],
             )
             return response.content.strip()
@@ -235,36 +445,44 @@ def analyze_medical_scan(image_path):
         st.error(f"🚨 Error analyzing medical scan: {e}")
         return None
 
-def comprehensive_health_analysis(scan_results, patient_info):
-    """Perform comprehensive health analysis with patient information."""
+def comprehensive_health_assessment(scan_analysis, patient_data):
+    """Perform comprehensive health assessment."""
     agent = get_comprehensive_agent()
     if agent is None:
         return None
 
     try:
-        with st.spinner("🔍 Performing comprehensive health analysis..."):
+        with st.spinner("🏥 Performing comprehensive health assessment..."):
             query = f"""
-            Perform a comprehensive health analysis based on:
+            Perform a comprehensive health assessment based on:
             
-            SCAN RESULTS:
-            {scan_results}
+            MEDICAL SCAN ANALYSIS:
+            {scan_analysis}
             
             PATIENT INFORMATION:
-            {patient_info}
+            Age: {patient_data['age']}
+            Medical History: {patient_data['medical_history']}
+            Current Medications: {patient_data['medications']}
+            Lifestyle & Diet: {patient_data['lifestyle']}
+            Habits: {patient_data['habits']}
+            Family Medical History: {patient_data['family_history']}
+            Recent Accidents/Injuries: {patient_data['accidents']}
             
-            Provide a detailed, personalized health assessment with specific recommendations, risk factors, and actionable advice.
-            Consider all aspects of the patient's health profile in your analysis.
+            Provide a comprehensive assessment considering all factors, risk analysis, 
+            personalized recommendations, and emergency indicators.
             """
+            
             response = agent.run(query)
             return response.content.strip()
     except Exception as e:
-        st.error(f"🚨 Error in comprehensive analysis: {e}")
+        st.error(f"🚨 Error in comprehensive assessment: {e}")
         return None
 
 def save_uploaded_file(uploaded_file):
     """Save the uploaded file to disk."""
     try:
         file_extension = os.path.splitext(uploaded_file.name)[1]
+        
         with NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
             temp_file.write(uploaded_file.getvalue())
             temp_path = temp_file.name
@@ -273,8 +491,41 @@ def save_uploaded_file(uploaded_file):
         st.error(f"💾 Error saving uploaded file: {e}")
         return None
 
-def create_medical_pdf(image_data, scan_analysis, comprehensive_analysis, patient_info):
-    """Create a comprehensive medical PDF report."""
+def extract_severity_level(analysis_text):
+    """Extract severity level from analysis."""
+    severity_patterns = {
+        "Emergency": ["emergency", "critical", "urgent", "immediate"],
+        "Severe": ["severe", "serious", "significant"],
+        "Moderate": ["moderate", "moderately"],
+        "Mild": ["mild", "minor", "slight"],
+        "Normal": ["normal", "healthy", "no abnormalities"]
+    }
+    
+    analysis_lower = analysis_text.lower()
+    
+    for severity, keywords in severity_patterns.items():
+        if any(keyword in analysis_lower for keyword in keywords):
+            return severity
+    
+    return "Unknown"
+
+def display_severity_status(severity):
+    """Display severity status with appropriate styling."""
+    if severity == "Emergency":
+        st.markdown('<div class="emergency-alert">🚨 EMERGENCY - SEEK IMMEDIATE MEDICAL ATTENTION</div>', unsafe_allow_html=True)
+    elif severity == "Severe":
+        st.error("🔴 SEVERE - Urgent medical consultation required")
+    elif severity == "Moderate":
+        st.warning("🟡 MODERATE - Medical consultation recommended")
+    elif severity == "Mild":
+        st.info("🟠 MILD - Monitor condition, routine check-up advised")
+    elif severity == "Normal":
+        st.markdown('<div class="normal-status">✅ NORMAL - No immediate concerns detected</div>', unsafe_allow_html=True)
+    else:
+        st.info("📊 Analysis completed - Review detailed results below")
+
+def create_comprehensive_pdf(image_data, scan_analysis, comprehensive_analysis, patient_data):
+    """Create a comprehensive PDF report."""
     try:
         buffer = BytesIO()
         pdf = SimpleDocTemplate(
@@ -289,96 +540,43 @@ def create_medical_pdf(image_data, scan_analysis, comprehensive_analysis, patien
         content = []
         styles = getSampleStyleSheet()
         
-        # Custom styles
+        # Title
         title_style = ParagraphStyle(
             'Title',
             parent=styles['Title'],
             fontSize=20,
             alignment=1,
             spaceAfter=12,
-            textColor=colors.HexColor('#8B4513')
+            textColor=colors.navy
         )
         
-        heading_style = ParagraphStyle(
-            'Heading',
-            parent=styles['Heading2'],
-            fontSize=14,
-            textColor=colors.HexColor('#A0522D'),
-            spaceAfter=6
-        )
-        
-        normal_style = ParagraphStyle(
-            'Body',
-            parent=styles['Normal'],
-            fontSize=11,
-            leading=14
-        )
-        
-        disclaimer_style = ParagraphStyle(
-            'Disclaimer',
-            parent=styles['Normal'],
-            fontSize=9,
-            textColor=colors.red,
-            borderWidth=1,
-            borderColor=colors.red,
-            borderPadding=5,
-            backColor=colors.pink,
-            alignment=1
-        )
-        
-        # Title
-        content.append(Paragraph("🏥 MediScan - Comprehensive Medical Report Analysis", title_style))
+        content.append(Paragraph("🏥 MediScan Pro - Comprehensive Medical Analysis Report", title_style))
         content.append(Spacer(1, 0.3*inch))
         
-        # Medical disclaimer
-        content.append(Paragraph(
-            "⚠️ MEDICAL DISCLAIMER: This analysis is for informational purposes only and should not replace professional medical advice, diagnosis, or treatment. "
-            "Always consult with qualified healthcare professionals for medical decisions. In case of emergency, contact emergency services immediately.",
-            disclaimer_style
-        ))
-        content.append(Spacer(1, 0.3*inch))
+        # Patient Information
+        content.append(Paragraph("👤 Patient Information", styles['Heading2']))
+        patient_info = f"""
+        Age: {patient_data['age']}
+        Medical History: {patient_data['medical_history']}
+        Current Medications: {patient_data['medications']}
+        Lifestyle & Diet: {patient_data['lifestyle']}
+        """
+        content.append(Paragraph(patient_info, styles['Normal']))
+        content.append(Spacer(1, 0.2*inch))
         
-        # Report generation info
+        # Scan Analysis
+        content.append(Paragraph("🔬 Medical Scan Analysis", styles['Heading2']))
+        content.append(Paragraph(scan_analysis, styles['Normal']))
+        content.append(Spacer(1, 0.2*inch))
+        
+        # Comprehensive Assessment
+        content.append(Paragraph("📋 Comprehensive Health Assessment", styles['Heading2']))
+        content.append(Paragraph(comprehensive_analysis, styles['Normal']))
+        
+        # Date and time
         current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        content.append(Paragraph(f"📅 Report Generated: {current_datetime}", normal_style))
-        content.append(Spacer(1, 0.2*inch))
-        
-        # Patient information
-        content.append(Paragraph("👤 Patient Information:", heading_style))
-        content.append(Paragraph(patient_info, normal_style))
-        content.append(Spacer(1, 0.2*inch))
-        
-        # Add scan image if available
-        if image_data:
-            try:
-                img_temp = BytesIO(image_data)
-                img = Image.open(img_temp)
-                img_width, img_height = img.size
-                aspect = img_height / float(img_width)
-                display_width = 4 * inch
-                display_height = display_width * aspect
-                
-                img_temp.seek(0)
-                img_obj = ReportLabImage(img_temp, width=display_width, height=display_height)
-                content.append(Paragraph("📸 Medical Scan:", heading_style))
-                content.append(img_obj)
-                content.append(Spacer(1, 0.2*inch))
-            except Exception as img_error:
-                st.warning(f"Could not add image to PDF: {img_error}")
-        
-        # Scan analysis
-        content.append(Paragraph("🔬 Initial Scan Analysis:", heading_style))
-        content.append(Paragraph(scan_analysis.replace('<', '&lt;').replace('>', '&gt;'), normal_style))
-        content.append(Spacer(1, 0.2*inch))
-        
-        # Comprehensive analysis
-        content.append(Paragraph("📊 Comprehensive Health Analysis:", heading_style))
-        content.append(Paragraph(comprehensive_analysis.replace('<', '&lt;').replace('>', '&gt;'), normal_style))
         content.append(Spacer(1, 0.3*inch))
-        
-        # Footer
-        content.append(Paragraph("© 2025 MediScan Medical Report Analyzer | AI-Powered Medical Analysis", 
-                                ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=colors.gray)))
+        content.append(Paragraph(f"Generated on: {current_datetime}", styles['Normal']))
         
         pdf.build(content)
         buffer.seek(0)
@@ -387,336 +585,254 @@ def create_medical_pdf(image_data, scan_analysis, comprehensive_analysis, patien
         st.error(f"📄 Error creating PDF: {e}")
         return None
 
-def collect_patient_information():
-    """Collect comprehensive patient information."""
-    st.markdown('<div class="info-card">', unsafe_allow_html=True)
-    st.subheader("👤 Patient Information")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        age = st.number_input("Age", min_value=1, max_value=120, value=30)
-        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-        weight = st.number_input("Weight (kg)", min_value=1.0, max_value=300.0, value=70.0)
-        height = st.number_input("Height (cm)", min_value=50.0, max_value=250.0, value=170.0)
-    
-    with col2:
-        occupation = st.text_input("Occupation", placeholder="e.g., Engineer, Teacher, etc.")
-        smoker = st.selectbox("Smoking Status", ["Non-smoker", "Former smoker", "Current smoker"])
-        alcohol = st.selectbox("Alcohol Consumption", ["Never", "Occasionally", "Regularly", "Heavily"])
-        exercise = st.selectbox("Exercise Level", ["Sedentary", "Light", "Moderate", "Active", "Very Active"])
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Medical History
-    st.markdown('<div class="info-card">', unsafe_allow_html=True)
-    st.subheader("📋 Medical History")
-    
-    previous_conditions = st.text_area(
-        "Previous Medical Conditions",
-        placeholder="List any previous diagnoses, surgeries, or chronic conditions...",
-        height=100
-    )
-    
-    current_medications = st.text_area(
-        "Current Medications",
-        placeholder="List all current medications with dosages...",
-        height=100
-    )
-    
-    current_symptoms = st.text_area(
-        "Current Symptoms",
-        placeholder="Describe any symptoms you're currently experiencing...",
-        height=100
-    )
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Family History
-    st.markdown('<div class="info-card">', unsafe_allow_html=True)
-    st.subheader("👨‍👩‍👧‍👦 Family Medical History")
-    
-    family_history = st.text_area(
-        "Family Medical History",
-        placeholder="List any significant medical conditions in your family (parents, siblings, grandparents)...",
-        height=100
-    )
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Accident History
-    st.markdown('<div class="info-card">', unsafe_allow_html=True)
-    st.subheader("🚑 Accident & Injury History")
-    
-    accident_history = st.text_area(
-        "Previous Accidents or Injuries",
-        placeholder="Describe any significant accidents, injuries, or trauma you've experienced...",
-        height=100
-    )
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Diet and Lifestyle
-    st.markdown('<div class="info-card">', unsafe_allow_html=True)
-    st.subheader("🥗 Diet & Lifestyle")
-    
-    diet_type = st.selectbox("Diet Type", ["Omnivore", "Vegetarian", "Vegan", "Keto", "Other"])
-    diet_details = st.text_area(
-        "Diet Details",
-        placeholder="Describe your typical daily diet, eating habits, and any dietary restrictions...",
-        height=80
-    )
-    
-    sleep_hours = st.slider("Average Sleep Hours", 4, 12, 8)
-    stress_level = st.slider("Stress Level (1-10)", 1, 10, 5)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Compile patient information
-    patient_info = f"""
-    Age: {age} years
-    Gender: {gender}
-    Weight: {weight} kg
-    Height: {height} cm
-    Occupation: {occupation}
-    Smoking Status: {smoker}
-    Alcohol Consumption: {alcohol}
-    Exercise Level: {exercise}
-    
-    Previous Medical Conditions: {previous_conditions}
-    Current Medications: {current_medications}
-    Current Symptoms: {current_symptoms}
-    
-    Family Medical History: {family_history}
-    
-    Accident/Injury History: {accident_history}
-    
-    Diet Type: {diet_type}
-    Diet Details: {diet_details}
-    Average Sleep: {sleep_hours} hours
-    Stress Level: {stress_level}/10
-    """
-    
-    return patient_info
-
-def display_emergency_alert(content):
-    """Display emergency alert with appropriate styling."""
-    if any(keyword in content.lower() for keyword in ["emergency", "urgent", "immediate", "critical", "severe"]):
-        st.markdown('<div class="emergency-alert">', unsafe_allow_html=True)
-        st.error(f"🚨 EMERGENCY ALERT: {content}")
-        st.markdown('</div>', unsafe_allow_html=True)
-        return True
-    return False
-
 def main():
     # Initialize session state
-    if 'scan_analysis' not in st.session_state:
-        st.session_state.scan_analysis = None
-    if 'comprehensive_analysis' not in st.session_state:
-        st.session_state.comprehensive_analysis = None
-    if 'patient_info' not in st.session_state:
-        st.session_state.patient_info = None
+    if 'analysis_results' not in st.session_state:
+        st.session_state.analysis_results = None
+    if 'comprehensive_results' not in st.session_state:
+        st.session_state.comprehensive_results = None
+    if 'patient_data' not in st.session_state:
+        st.session_state.patient_data = None
     if 'original_image' not in st.session_state:
         st.session_state.original_image = None
 
-    # Header
-    st.markdown('<div class="linear-layout">', unsafe_allow_html=True)
-    st.title("🏥 MediScan - Medical Report Analyzer")
-    
-    # Medical disclaimer
-    st.markdown('<div class="info-card">', unsafe_allow_html=True)
-    st.warning("""
-    ⚠️ **MEDICAL DISCLAIMER**
-    
-    This AI-powered medical report analyzer is designed to provide educational information and preliminary insights only. 
-    It is NOT a substitute for professional medical advice, diagnosis, or treatment. Always consult with qualified 
-    healthcare professionals for medical decisions. In case of emergency, contact emergency services immediately.
-    """)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Scan Upload Section
-    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-    st.subheader("📤 Upload Medical Scan Report")
-    
-    uploaded_file = st.file_uploader(
-        "Upload your medical scan report (X-ray, CT, MRI, ultrasound, blood test, etc.)",
-        type=["jpg", "jpeg", "png", "webp", "pdf"],
-        help="Upload a clear image of your medical scan report or test results"
-    )
-    
-    if uploaded_file:
-        # Display uploaded image
-        if uploaded_file.type.startswith('image/'):
-            resized_image = resize_image_for_display(uploaded_file)
-            if resized_image:
-                st.image(resized_image, caption="Uploaded Medical Scan", width=MAX_IMAGE_WIDTH)
+    # Main Header
+    st.markdown("""
+    <div class="main-header">
+        <h1>🏥 MediScan Pro - Advanced Medical Analysis</h1>
+        <p>Comprehensive Medical Scan Analysis & Health Assessment Platform</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Sidebar for patient information
+    with st.sidebar:
+        st.markdown('<div class="section-header">👤 Patient Information</div>', unsafe_allow_html=True)
         
-        # Display file info
-        file_size = len(uploaded_file.getvalue()) / 1024
-        st.info(f"**{uploaded_file.name}** • {file_size:.1f} KB")
+        age = st.number_input("Age", min_value=1, max_value=120, value=30)
+        
+        medical_history = st.text_area(
+            "Previous Medical History",
+            placeholder="e.g., Diabetes, Hypertension, Heart disease, Surgeries, etc.",
+            height=100
+        )
+        
+        current_medications = st.text_area(
+            "Current Medications",
+            placeholder="e.g., Metformin 500mg twice daily, Lisinopril 10mg once daily",
+            height=100
+        )
+        
+        lifestyle_diet = st.text_area(
+            "Lifestyle & Diet",
+            placeholder="e.g., Vegetarian, Regular exercise, Sedentary lifestyle, etc.",
+            height=100
+        )
+        
+        habits = st.text_area(
+            "Habits",
+            placeholder="e.g., Smoking, Alcohol consumption, Exercise routine, etc.",
+            height=100
+        )
+        
+        family_history = st.text_area(
+            "Family Medical History",
+            placeholder="e.g., Father - Diabetes, Mother - Heart disease, etc.",
+            height=100
+        )
+        
+        accidents = st.text_area(
+            "Recent Accidents/Injuries",
+            placeholder="e.g., Car accident last month, Fall injury, etc.",
+            height=100
+        )
+
+    # Main content area
+    col1, col2 = st.columns([1, 1])
     
-    # Patient Information Section
-    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-    patient_info = collect_patient_information()
-    
-    # Analysis Button
-    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-    
-    if uploaded_file and st.button("🔬 Analyze Medical Scan & Generate Report", key="analyze_button"):
-        # Save uploaded file and analyze
-        temp_path = save_uploaded_file(uploaded_file)
-        if temp_path:
-            try:
-                # Initial scan analysis
-                scan_analysis = analyze_medical_scan(temp_path)
-                
-                if scan_analysis:
-                    st.session_state.scan_analysis = scan_analysis
-                    st.session_state.patient_info = patient_info
-                    st.session_state.original_image = uploaded_file.getvalue()
+    with col1:
+        st.markdown('<div class="input-section">', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">📤 Upload Medical Scan</div>', unsafe_allow_html=True)
+        
+        uploaded_file = st.file_uploader(
+            "Upload your medical scan report (X-ray, MRI, CT scan, Blood test, etc.)",
+            type=["jpg", "jpeg", "png", "webp", "pdf"],
+            help="Upload a clear image of your medical scan or report"
+        )
+        
+        if uploaded_file:
+            if uploaded_file.type == "application/pdf":
+                st.info("📄 PDF uploaded successfully. Note: Image analysis works best with image files.")
+            else:
+                resized_image = resize_image_for_display(uploaded_file)
+                if resized_image:
+                    st.image(resized_image, caption="Uploaded Medical Scan", width=MAX_IMAGE_WIDTH)
                     
-                    # Comprehensive analysis
-                    comprehensive_analysis = comprehensive_health_analysis(scan_analysis, patient_info)
-                    if comprehensive_analysis:
-                        st.session_state.comprehensive_analysis = comprehensive_analysis
-                    
-                    st.success("✅ Medical scan analysis completed successfully!")
-                else:
-                    st.error("❌ Analysis failed. Please try with a clearer image.")
-                
-            except Exception as e:
-                st.error(f"🚨 Analysis failed: {e}")
-            finally:
-                # Clean up temp file
-                if os.path.exists(temp_path):
-                    os.unlink(temp_path)
-    
-    # Display Results
-    if st.session_state.scan_analysis:
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-        st.subheader("📊 Medical Analysis Results")
+                    file_size = len(uploaded_file.getvalue()) / 1024
+                    st.info(f"**{uploaded_file.name}** • {file_size:.1f} KB")
         
-        # Parse and display initial scan analysis
-        st.markdown("### 🔬 Initial Scan Analysis")
-        analysis_text = st.session_state.scan_analysis
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        # Check for emergency indicators
-        emergency_found = False
-        if "emergency" in analysis_text.lower() or "critical" in analysis_text.lower():
-            emergency_found = True
-        
-        sections = [
-            "Scan Analysis", "Detected Conditions", "Condition Explanation", 
-            "Severity Assessment", "Immediate Concerns", "Recommended Precautions",
-            "Lifestyle Modifications", "Specialist Consultations", "Emergency Indicators",
-            "Follow-up Requirements", "Prognosis"
-        ]
-        
-        for section in sections:
-            pattern = rf"\*{re.escape(section)}:\*(.*?)(?=\*(?:{'|'.join(re.escape(s) for s in sections)}):\*|$)"
-            match = re.search(pattern, analysis_text, re.DOTALL | re.IGNORECASE)
+        # Analysis button
+        if uploaded_file and st.button("🔬 Analyze Medical Scan", key="analyze_btn"):
+            # Store patient data
+            st.session_state.patient_data = {
+                'age': age,
+                'medical_history': medical_history,
+                'medications': current_medications,
+                'lifestyle': lifestyle_diet,
+                'habits': habits,
+                'family_history': family_history,
+                'accidents': accidents
+            }
             
-            if match:
-                content = match.group(1).strip()
+            # Save and analyze file
+            temp_path = save_uploaded_file(uploaded_file)
+            if temp_path:
+                try:
+                    # Analyze medical scan
+                    scan_analysis = analyze_medical_scan(temp_path)
+                    
+                    if scan_analysis:
+                        st.session_state.analysis_results = scan_analysis
+                        st.session_state.original_image = uploaded_file.getvalue()
+                        
+                        # Perform comprehensive assessment
+                        comprehensive_analysis = comprehensive_health_assessment(
+                            scan_analysis, 
+                            st.session_state.patient_data
+                        )
+                        
+                        if comprehensive_analysis:
+                            st.session_state.comprehensive_results = comprehensive_analysis
+                        
+                        st.success("✅ Medical analysis completed successfully!")
+                    else:
+                        st.error("❌ Analysis failed. Please try with a clearer image.")
                 
-                # Icons for sections
-                icons = {
-                    "Scan Analysis": "🔍",
-                    "Detected Conditions": "🩺",
-                    "Condition Explanation": "📝",
-                    "Severity Assessment": "⚖️",
-                    "Immediate Concerns": "🚨",
-                    "Recommended Precautions": "🛡️",
-                    "Lifestyle Modifications": "🏃‍♂️",
-                    "Specialist Consultations": "👨‍⚕️",
-                    "Emergency Indicators": "🚨",
-                    "Follow-up Requirements": "📅",
-                    "Prognosis": "🔮"
-                }
-                
-                st.markdown(f"**{icons.get(section, '📋')} {section}:**")
-                
-                # Special handling for emergency sections
-                if section in ["Immediate Concerns", "Emergency Indicators"] and content:
-                    display_emergency_alert(content)
-                else:
-                    st.write(content)
-                
+                except Exception as e:
+                    st.error(f"🚨 Analysis failed: {e}")
+                finally:
+                    if os.path.exists(temp_path):
+                        os.unlink(temp_path)
+    
+    with col2:
+        st.markdown('<div class="results-section">', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">📊 Analysis Results</div>', unsafe_allow_html=True)
+        
+        if st.session_state.analysis_results:
+            # Extract and display severity
+            severity = extract_severity_level(st.session_state.analysis_results)
+            display_severity_status(severity)
+            
+            # Display scan analysis
+            st.markdown("### 🔬 Medical Scan Analysis")
+            st.markdown(st.session_state.analysis_results)
+            
+            # Display comprehensive assessment
+            if st.session_state.comprehensive_results:
                 st.markdown("---")
-        
-        # Display comprehensive analysis
-        if st.session_state.comprehensive_analysis:
-            st.markdown("### 📊 Comprehensive Health Assessment")
-            st.write(st.session_state.comprehensive_analysis)
-            st.markdown("---")
-        
-        # PDF download
-        if st.session_state.original_image:
-            st.subheader("📄 Download Medical Report")
+                st.markdown("### 📋 Comprehensive Health Assessment")
+                st.markdown(st.session_state.comprehensive_results)
             
-            pdf_bytes = create_medical_pdf(
-                st.session_state.original_image,
-                st.session_state.scan_analysis,
-                st.session_state.comprehensive_analysis or "Comprehensive analysis not available",
-                st.session_state.patient_info
-            )
-            
-            if pdf_bytes:
-                download_filename = f"medical_analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                st.download_button(
-                    label="📥 Download Complete Medical Report",
-                    data=pdf_bytes,
-                    file_name=download_filename,
-                    mime="application/pdf",
-                    help="Download a comprehensive PDF report with all analysis results and recommendations"
+            # PDF Download
+            if st.session_state.patient_data:
+                st.markdown("---")
+                st.subheader("📄 Download Complete Report")
+                
+                pdf_bytes = create_comprehensive_pdf(
+                    st.session_state.original_image,
+                    st.session_state.analysis_results,
+                    st.session_state.comprehensive_results or "",
+                    st.session_state.patient_data
                 )
+                
+                if pdf_bytes:
+                    download_filename = f"mediscan_comprehensive_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                    st.download_button(
+                        label="📥 Download Complete Medical Report",
+                        data=pdf_bytes,
+                        file_name=download_filename,
+                        mime="application/pdf"
+                    )
+        else:
+            st.info("👆 Upload a medical scan and complete patient information to see detailed analysis results here.")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Emergency Information Section
+    if st.session_state.analysis_results:
+        severity = extract_severity_level(st.session_state.analysis_results)
+        if severity in ["Emergency", "Severe"]:
+            st.markdown("---")
+            st.markdown('<div class="analysis-card">', unsafe_allow_html=True)
+            st.markdown("### 🚨 Emergency Information")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("""
+                **🏥 Immediate Actions:**
+                - Contact emergency services: 108/102
+                - Visit nearest emergency room
+                - Don't delay seeking medical attention
+                - Bring all medications and this report
+                """)
+            
+            with col2:
+                st.markdown("""
+                **👨‍⚕️ Specialists to Consult:**
+                - Emergency Medicine Physician
+                - Relevant specialist based on condition
+                - Primary care physician for follow-up
+                - Bring complete medical history
+                """)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    # Health Tips Section
+    st.markdown("---")
+    st.markdown('<div class="analysis-card">', unsafe_allow_html=True)
+    st.markdown("### 💡 General Health Tips")
     
-    # Important Health Reminders
-    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-    st.subheader("🩺 Important Health Reminders")
-    
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         st.markdown("""
-        **🚨 When to Seek Emergency Care:**
-        - Severe chest pain or difficulty breathing
-        - Sudden severe headache or vision changes
-        - Signs of stroke (facial drooping, arm weakness, speech difficulty)
-        - Severe abdominal pain
-        - Heavy bleeding or trauma
-        """)
-        
-        st.markdown("""
-        **👨‍⚕️ Regular Health Monitoring:**
-        - Annual physical examinations
-        - Age-appropriate screenings
-        - Medication adherence and monitoring
-        - Lifestyle modifications as recommended
+        **🍎 Nutrition**
+        - Balanced diet with fruits & vegetables
+        - Limit processed foods
+        - Stay hydrated
+        - Regular meal timing
         """)
     
     with col2:
         st.markdown("""
-        **📞 Emergency Contacts:**
-        - Emergency Services: 911 (US) / 112 (EU) / Local emergency number
-        - Poison Control: Contact your local poison control center
-        - Mental Health Crisis: National crisis helpline
-        - Your Primary Care Physician
+        **🏃‍♂️ Exercise**
+        - Regular physical activity
+        - 30 minutes daily walking
+        - Strength training twice weekly
+        - Consult doctor before starting
         """)
-        
+    
+    with col3:
         st.markdown("""
-        **💊 Medication Safety:**
-        - Take medications exactly as prescribed
-        - Never share medications with others
-        - Report side effects to your healthcare provider
-        - Keep an updated medication list
+        **😴 Lifestyle**
+        - 7-8 hours quality sleep
+        - Stress management
+        - Regular health check-ups
+        - Avoid smoking & excess alcohol
         """)
     
     st.markdown('</div>', unsafe_allow_html=True)
-    
+
     # Footer
-    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-    st.markdown("© 2025 MediScan Medical Report Analyzer | AI-Powered Medical Analysis | For Educational Purposes Only")
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; color: #666; font-size: 0.9rem;">
+        © 2025 MediScan Pro - Advanced Medical Analysis Platform | 
+        Powered by Gemini AI + Tavily | 
+        🔒 Your health data is secure and private
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
