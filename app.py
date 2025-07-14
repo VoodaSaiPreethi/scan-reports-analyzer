@@ -121,7 +121,6 @@ GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY")
 # Check if API keys are available
 if not TAVILY_API_KEY or not GOOGLE_API_KEY:
     st.error("🔑 API keys are missing. Please check your configuration.")
-    st.markdown("Please create a `.streamlit/secrets.toml` file with your `TAVILY_API_KEY` and `GOOGLE_API_KEY`.")
     st.stop()
 
 MAX_IMAGE_WIDTH = 400
@@ -131,45 +130,31 @@ You are an expert medical diagnostician and radiologist with extensive knowledge
 Your role is to analyze medical scan reports (X-rays, CT scans, MRIs, ultrasounds, blood tests, etc.) and provide comprehensive medical insights.
 
 You must:
-1. Clearly identify and NAME all medical conditions found in the scan using precise medical terminology
-2. Provide layman-friendly explanations of each condition
-3. List conditions in order of clinical significance
-4. For each condition, specify:
-   - Exact medical name
-   - Location in the body
-   - Size/extent if applicable
-   - Any measurable parameters
-5. Assess severity and urgency of findings
-6. Provide detailed explanations of what the conditions mean for the patient's health
-7. Suggest appropriate precautions and lifestyle modifications
-8. Determine if the condition requires immediate medical attention
-9. Consider the patient's complete medical history in your analysis
-10. Provide specific recommendations for specialist consultations when needed
-Always use precise medical terminology first, followed by simple explanations.
+1. Identify and explain medical conditions found in the scan in simple, layman-friendly language
+2. Assess severity and urgency of findings
+3. Provide detailed explanations of what the conditions mean for the patient's health
+4. Suggest appropriate precautions and lifestyle modifications
+5. Determine if the condition requires immediate medical attention
+6. Consider the patient's complete medical history, lifestyle, and family history in your analysis
+7. Provide specific recommendations for specialist consultations when needed
 """
+
 MEDICAL_ANALYSIS_INSTRUCTIONS = """
 Analyze the medical scan report and provide a comprehensive analysis in the following structured format:
 
-*Diagnosed Conditions:* <Bulleted list of ALL medical conditions identified with exact medical names>
-For each condition:
-- Exact medical name (primary diagnosis)
-- Location in body
-- Size/extent if applicable
-- Clinical significance
-
-*Detailed Analysis:* <detailed analysis of what the scan shows>
-*Condition Explanations:* <explain each condition in simple, understandable language>
-*Severity Assessment:* <rate severity: Low/Moderate/High/Critical with justification>
+*Scan Analysis:* <detailed analysis of what the scan shows>
+*Detected Conditions:* <list of medical conditions or abnormalities found>
+*Condition Explanation:* <explain each condition in simple, understandable language>
+*Severity Assessment:* <rate severity: Low/Moderate/High/Critical>
 *Immediate Concerns:* <any urgent issues that need immediate attention>
-*Recommended Actions:* <specific medical actions to take>
-*Precautions:* <specific precautions to take>
+*Recommended Precautions:* <specific precautions to take>
 *Lifestyle Modifications:* <diet, exercise, habits to change>
-*Specialist Referrals:* <which doctors to consult and timeline>
+*Specialist Consultations:* <which doctors to consult and when>
 *Emergency Indicators:* <symptoms that require immediate medical help>
-*Follow-up Plan:* <when to get re-tested or follow-up scans>
+*Follow-up Requirements:* <when to get re-tested or follow-up scans>
 *Prognosis:* <what to expect going forward>
 
-Format conditions clearly and prioritize by clinical importance.
+Always prioritize patient safety and provide clear, actionable advice.
 """
 
 COMPREHENSIVE_ANALYSIS_PROMPT = """
@@ -191,9 +176,8 @@ Deliver a holistic health report with personalized recommendations, risk assessm
 def get_medical_agent():
     """Initialize and cache the medical analysis agent."""
     try:
-        # Using gemini-1.5-flash-latest for general availability and vision capabilities
         return Agent(
-            model=Gemini(model="gemini-1.5-flash-latest", api_key=GOOGLE_API_KEY),
+            model=Gemini(id="gemini-2.0-flash-exp", api_key=GOOGLE_API_KEY),
             system_prompt=MEDICAL_SCAN_SYSTEM_PROMPT,
             instructions=MEDICAL_ANALYSIS_INSTRUCTIONS,
             tools=[TavilyTools(api_key=TAVILY_API_KEY)],
@@ -207,9 +191,8 @@ def get_medical_agent():
 def get_comprehensive_agent():
     """Initialize and cache the comprehensive analysis agent."""
     try:
-        # Using gemini-1.5-flash-latest for general availability
         return Agent(
-            model=Gemini(model="gemini-1.5-flash-latest", api_key=GOOGLE_API_KEY),
+            model=Gemini(id="gemini-2.0-flash-exp", api_key=GOOGLE_API_KEY),
             system_prompt=COMPREHENSIVE_ANALYSIS_PROMPT,
             tools=[TavilyTools(api_key=TAVILY_API_KEY)],
             markdown=True,
@@ -221,17 +204,15 @@ def get_comprehensive_agent():
 def resize_image_for_display(image_file):
     """Resize image for display only, returns bytes."""
     try:
-        # Reset file pointer to the beginning before opening
         image_file.seek(0)
         img = Image.open(image_file)
+        image_file.seek(0)
         
         aspect_ratio = img.height / img.width
         new_height = int(MAX_IMAGE_WIDTH * aspect_ratio)
         img = img.resize((MAX_IMAGE_WIDTH, new_height), Image.Resampling.LANCZOS)
         buf = BytesIO()
         img.save(buf, format="PNG")
-        # Reset buffer pointer to the beginning for reading later
-        buf.seek(0)
         return buf.getvalue()
     except Exception as e:
         st.error(f"🖼️ Error resizing image: {e}")
@@ -244,16 +225,14 @@ def analyze_medical_scan(image_path):
         return None
 
     try:
-        with st.spinner("🔬 Analyzing medical scan report... This may take a moment."):
-            # For Gemini's vision capability, ensure the image path points to an actual image file.
-            # If the input is a PDF, the model will try to interpret it as an image of a document.
+        with st.spinner("🔬 Analyzing medical scan report..."):
             response = agent.run(
-                "Analyze this medical scan report and provide a comprehensive medical analysis including condition explanation, severity assessment, and recommendations. Focus on extracting information from the image.",
-                images=[image_path], # Pass the path to the image file
+                "Analyze this medical scan report and provide a comprehensive medical analysis including condition explanation, severity assessment, and recommendations.",
+                images=[image_path],
             )
             return response.content.strip()
     except Exception as e:
-        st.error(f"🚨 Error analyzing medical scan: {e}. Please ensure the uploaded file is a clear image of a report.")
+        st.error(f"🚨 Error analyzing medical scan: {e}")
         return None
 
 def comprehensive_health_analysis(scan_results, patient_info):
@@ -285,18 +264,7 @@ def comprehensive_health_analysis(scan_results, patient_info):
 def save_uploaded_file(uploaded_file):
     """Save the uploaded file to disk."""
     try:
-        # Use a more specific directory if needed, e.g., 'temp_uploads'
-        # Ensure the directory exists
-        # if not os.path.exists('temp_uploads'):
-        #     os.makedirs('temp_uploads')
-        
         file_extension = os.path.splitext(uploaded_file.name)[1]
-        if not file_extension: # Add a default if no extension is found
-            file_extension = ".png" 
-        
-        # Using NamedTemporaryFile is good, but for phi-agents it's often better
-        # to ensure the file is accessible by path.
-        # This approach with NamedTemporaryFile is generally robust.
         with NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
             temp_file.write(uploaded_file.getvalue())
             temp_path = temp_file.name
@@ -377,9 +345,7 @@ def create_medical_pdf(image_data, scan_analysis, comprehensive_analysis, patien
         
         # Patient information
         content.append(Paragraph("👤 Patient Information:", heading_style))
-        # Replace newlines with <br/> for ReportLab Paragraphs
-        formatted_patient_info = patient_info.replace("\n", "<br/>")
-        content.append(Paragraph(formatted_patient_info, normal_style))
+        content.append(Paragraph(patient_info, normal_style))
         content.append(Spacer(1, 0.2*inch))
         
         # Add scan image if available
@@ -389,14 +355,9 @@ def create_medical_pdf(image_data, scan_analysis, comprehensive_analysis, patien
                 img = Image.open(img_temp)
                 img_width, img_height = img.size
                 aspect = img_height / float(img_width)
-                display_width = 4 * inch # Max width for image in PDF
+                display_width = 4 * inch
                 display_height = display_width * aspect
                 
-                # Ensure image doesn't exceed page height or other constraints if needed
-                if display_height > (letter[1] - 2 * 72 - 2 * inch): # Letter height - margins - some buffer
-                    display_height = (letter[1] - 2 * 72 - 2 * inch)
-                    display_width = display_height / aspect
-
                 img_temp.seek(0)
                 img_obj = ReportLabImage(img_temp, width=display_width, height=display_height)
                 content.append(Paragraph("📸 Medical Scan:", heading_style))
@@ -407,17 +368,12 @@ def create_medical_pdf(image_data, scan_analysis, comprehensive_analysis, patien
         
         # Scan analysis
         content.append(Paragraph("🔬 Initial Scan Analysis:", heading_style))
-        # It's better to process markdown to HTML or use a Markdown-to-ReportLab converter
-        # For simplicity, here we replace common markdown elements.
-        # This will need more robust parsing for complex markdown.
-        processed_scan_analysis = scan_analysis.replace('**', '').replace('* ', '• ').replace('\n', '<br/>')
-        content.append(Paragraph(processed_scan_analysis.replace('<', '&lt;').replace('>', '&gt;'), normal_style))
+        content.append(Paragraph(scan_analysis.replace('<', '&lt;').replace('>', '&gt;'), normal_style))
         content.append(Spacer(1, 0.2*inch))
         
         # Comprehensive analysis
         content.append(Paragraph("📊 Comprehensive Health Analysis:", heading_style))
-        processed_comprehensive_analysis = comprehensive_analysis.replace('**', '').replace('* ', '• ').replace('\n', '<br/>')
-        content.append(Paragraph(processed_comprehensive_analysis.replace('<', '&lt;').replace('>', '&gt;'), normal_style))
+        content.append(Paragraph(comprehensive_analysis.replace('<', '&lt;').replace('>', '&gt;'), normal_style))
         content.append(Spacer(1, 0.3*inch))
         
         # Footer
@@ -439,16 +395,16 @@ def collect_patient_information():
     col1, col2 = st.columns(2)
     
     with col1:
-        age = st.number_input("Age", min_value=1, max_value=120, value=30, help="Your current age in years.")
-        gender = st.selectbox("Gender", ["Male", "Female", "Other"], help="Your biological gender.")
-        weight = st.number_input("Weight (kg)", min_value=1.0, max_value=300.0, value=70.0, help="Your weight in kilograms.")
-        height = st.number_input("Height (cm)", min_value=50.0, max_value=250.0, value=170.0, help="Your height in centimeters.")
+        age = st.number_input("Age", min_value=1, max_value=120, value=30)
+        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+        weight = st.number_input("Weight (kg)", min_value=1.0, max_value=300.0, value=70.0)
+        height = st.number_input("Height (cm)", min_value=50.0, max_value=250.0, value=170.0)
     
     with col2:
-        occupation = st.text_input("Occupation", placeholder="e.g., Engineer, Teacher, etc.", help="Your current profession.")
-        smoker = st.selectbox("Smoking Status", ["Non-smoker", "Former smoker", "Current smoker"], help="Indicate your smoking habits.")
-        alcohol = st.selectbox("Alcohol Consumption", ["Never", "Occasionally", "Regularly", "Heavily"], help="How often do you consume alcohol?")
-        exercise = st.selectbox("Exercise Level", ["Sedentary", "Light", "Moderate", "Active", "Very Active"], help="How active are you physically?")
+        occupation = st.text_input("Occupation", placeholder="e.g., Engineer, Teacher, etc.")
+        smoker = st.selectbox("Smoking Status", ["Non-smoker", "Former smoker", "Current smoker"])
+        alcohol = st.selectbox("Alcohol Consumption", ["Never", "Occasionally", "Regularly", "Heavily"])
+        exercise = st.selectbox("Exercise Level", ["Sedentary", "Light", "Moderate", "Active", "Very Active"])
     
     st.markdown('</div>', unsafe_allow_html=True)
     
@@ -459,22 +415,19 @@ def collect_patient_information():
     previous_conditions = st.text_area(
         "Previous Medical Conditions",
         placeholder="List any previous diagnoses, surgeries, or chronic conditions...",
-        height=100,
-        help="Provide details of any past medical conditions or operations."
+        height=100
     )
     
     current_medications = st.text_area(
         "Current Medications",
         placeholder="List all current medications with dosages...",
-        height=100,
-        help="Include prescription and over-the-counter medications, and supplements."
+        height=100
     )
     
     current_symptoms = st.text_area(
         "Current Symptoms",
         placeholder="Describe any symptoms you're currently experiencing...",
-        height=100,
-        help="Detail any current health concerns or symptoms."
+        height=100
     )
     
     st.markdown('</div>', unsafe_allow_html=True)
@@ -486,8 +439,7 @@ def collect_patient_information():
     family_history = st.text_area(
         "Family Medical History",
         placeholder="List any significant medical conditions in your family (parents, siblings, grandparents)...",
-        height=100,
-        help="Mention conditions like heart disease, diabetes, cancer, etc., in your close relatives."
+        height=100
     )
     
     st.markdown('</div>', unsafe_allow_html=True)
@@ -499,8 +451,7 @@ def collect_patient_information():
     accident_history = st.text_area(
         "Previous Accidents or Injuries",
         placeholder="Describe any significant accidents, injuries, or trauma you've experienced...",
-        height=100,
-        help="Include details about past accidents, fractures, or other injuries."
+        height=100
     )
     
     st.markdown('</div>', unsafe_allow_html=True)
@@ -509,16 +460,15 @@ def collect_patient_information():
     st.markdown('<div class="info-card">', unsafe_allow_html=True)
     st.subheader("🥗 Diet & Lifestyle")
     
-    diet_type = st.selectbox("Diet Type", ["Omnivore", "Vegetarian", "Vegan", "Keto", "Other"], help="What type of diet do you primarily follow?")
+    diet_type = st.selectbox("Diet Type", ["Omnivore", "Vegetarian", "Vegan", "Keto", "Other"])
     diet_details = st.text_area(
         "Diet Details",
         placeholder="Describe your typical daily diet, eating habits, and any dietary restrictions...",
-        height=80,
-        help="Provide specifics about your meals, allergies, or restrictions."
+        height=80
     )
     
-    sleep_hours = st.slider("Average Sleep Hours", 4, 12, 8, help="How many hours do you typically sleep per night?")
-    stress_level = st.slider("Stress Level (1-10)", 1, 10, 5, help="Rate your general stress level from 1 (low) to 10 (high).")
+    sleep_hours = st.slider("Average Sleep Hours", 4, 12, 8)
+    stress_level = st.slider("Stress Level (1-10)", 1, 10, 5)
     
     st.markdown('</div>', unsafe_allow_html=True)
     
@@ -528,21 +478,21 @@ def collect_patient_information():
     Gender: {gender}
     Weight: {weight} kg
     Height: {height} cm
-    Occupation: {occupation if occupation else 'Not specified'}
+    Occupation: {occupation}
     Smoking Status: {smoker}
     Alcohol Consumption: {alcohol}
     Exercise Level: {exercise}
     
-    Previous Medical Conditions: {previous_conditions if previous_conditions else 'None'}
-    Current Medications: {current_medications if current_medications else 'None'}
-    Current Symptoms: {current_symptoms if current_symptoms else 'None'}
+    Previous Medical Conditions: {previous_conditions}
+    Current Medications: {current_medications}
+    Current Symptoms: {current_symptoms}
     
-    Family Medical History: {family_history if family_history else 'None'}
+    Family Medical History: {family_history}
     
-    Accident/Injury History: {accident_history if accident_history else 'None'}
+    Accident/Injury History: {accident_history}
     
     Diet Type: {diet_type}
-    Diet Details: {diet_details if diet_details else 'Not specified'}
+    Diet Details: {diet_details}
     Average Sleep: {sleep_hours} hours
     Stress Level: {stress_level}/10
     """
@@ -551,8 +501,7 @@ def collect_patient_information():
 
 def display_emergency_alert(content):
     """Display emergency alert with appropriate styling."""
-    # Using more specific keywords for better matching, and ensuring case-insensitivity
-    if any(keyword in content.lower() for keyword in ["emergency", "urgent", "immediate", "critical", "life-threatening", "severe risk"]):
+    if any(keyword in content.lower() for keyword in ["emergency", "urgent", "immediate", "critical", "severe"]):
         st.markdown('<div class="emergency-alert">', unsafe_allow_html=True)
         st.error(f"🚨 EMERGENCY ALERT: {content}")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -590,25 +539,17 @@ def main():
     st.subheader("📤 Upload Medical Scan Report")
     
     uploaded_file = st.file_uploader(
-        "Upload a clear image of your medical scan report or test results (e.g., X-ray report, CT report, blood test results). Image formats: JPG, JPEG, PNG, WEBP. PDF uploads are treated as images.",
+        "Upload your medical scan report (X-ray, CT, MRI, ultrasound, blood test, etc.)",
         type=["jpg", "jpeg", "png", "webp", "pdf"],
-        help="Upload a clear image of your medical scan report or test results. For PDFs, ensure the content is readable as an image."
+        help="Upload a clear image of your medical scan report or test results"
     )
     
     if uploaded_file:
-        # Store original image bytes for PDF generation later
-        st.session_state.original_image = uploaded_file.getvalue()
-
         # Display uploaded image
-        # Use a BytesIO object for displaying, so the original_image can be read again
-        if uploaded_file.type.startswith('image/') or uploaded_file.type == 'application/pdf':
-            # Create a BytesIO from the original_image to display, as resize_image_for_display consumes it
-            display_file = BytesIO(st.session_state.original_image)
-            resized_image_bytes = resize_image_for_display(display_file)
-            if resized_image_bytes:
-                st.image(resized_image_bytes, caption="Uploaded Medical Scan", width=MAX_IMAGE_WIDTH)
-        else:
-            st.warning("Unsupported file type for direct display. Please upload an image or PDF.")
+        if uploaded_file.type.startswith('image/'):
+            resized_image = resize_image_for_display(uploaded_file)
+            if resized_image:
+                st.image(resized_image, caption="Uploaded Medical Scan", width=MAX_IMAGE_WIDTH)
         
         # Display file info
         file_size = len(uploaded_file.getvalue()) / 1024
@@ -617,153 +558,119 @@ def main():
     # Patient Information Section
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
     patient_info = collect_patient_information()
-    # Store patient info in session state as it's collected
-    st.session_state.patient_info = patient_info
     
     # Analysis Button
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
     
-    if st.button("🔬 Analyze Medical Scan & Generate Report", key="analyze_button"):
-        if not uploaded_file:
-            st.warning("Please upload a medical scan report to proceed.")
-        else:
-            # Save uploaded file and analyze
-            temp_path = save_uploaded_file(uploaded_file)
-            if temp_path:
-                try:
-                    # Initial scan analysis
-                    scan_analysis = analyze_medical_scan(temp_path)
-                    
-                    if scan_analysis:
-                        st.session_state.scan_analysis = scan_analysis
-                        
-                        # Comprehensive analysis
-                        comprehensive_analysis = comprehensive_health_analysis(scan_analysis, st.session_state.patient_info)
-                        if comprehensive_analysis:
-                            st.session_state.comprehensive_analysis = comprehensive_analysis
-                        else:
-                            st.warning("Could not perform comprehensive analysis. Please check AI model status.")
-                        
-                        st.success("✅ Medical scan analysis completed successfully!")
-                    else:
-                        st.error("❌ Scan analysis failed. Please try with a clearer image or different file.")
-                    
-                except Exception as e:
-                    st.error(f"🚨 An unexpected error occurred during analysis: {e}")
-                finally:
-                    # Clean up temp file
-                    if os.path.exists(temp_path):
-                        os.unlink(temp_path)
-            else:
-                st.error("Failed to save uploaded file for analysis.")
-
-# Display Results
-if st.session_state.scan_analysis:
-    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-    st.subheader("📊 Medical Analysis Results")
-    
-    # Display Emergency Alert first if applicable
-    if st.session_state.scan_analysis:
-        display_emergency_alert(st.session_state.scan_analysis) # Check scan analysis for emergency keywords
-    
-    # Parse and display diagnosed conditions first
-    st.markdown("### 🩺 Diagnosed Conditions")
-    # Updated regex to be more robust for different endings
-    conditions_match = re.search(r"\*Diagnosed Conditions:\*(.*?)(?=\*(Detailed Analysis|Condition Explanations|Severity Assessment|Immediate Concerns|Recommended Actions|Precautions|Lifestyle Modifications|Specialist Referrals|Emergency Indicators|Follow-up Plan|Prognosis):\*|$)", 
-                               st.session_state.scan_analysis, re.DOTALL | re.IGNORECASE)
-    
-    if conditions_match:
-        conditions_content = conditions_match.group(1).strip()
-        if conditions_content: # Ensure content is not empty
-            # Add special styling for conditions
-            st.markdown(f"""
-            <div style="background-color:#FFF0F5; padding:15px; border-radius:10px; border-left:5px solid #FF69B4">
-            {conditions_content}
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.info("No specific medical conditions were explicitly identified in the 'Diagnosed Conditions' section by the AI.")
-    else:
-        st.info("Could not extract 'Diagnosed Conditions' section. The AI output format might have varied.")
-    
-    st.markdown("---")
-    
-    # Rest of the analysis sections...
-    sections = [
-        "Detailed Analysis", "Condition Explanations", "Severity Assessment", 
-        "Immediate Concerns", "Recommended Actions", "Precautions",
-        "Lifestyle Modifications", "Specialist Referrals", "Emergency Indicators",
-        "Follow-up Plan", "Prognosis"
-    ]
-    
-    full_analysis_text = st.session_state.scan_analysis
-    
-    for i, section in enumerate(sections):
-        # Adjusted regex to look for the next section or end of string
-        # Using a lookahead for the next potential section or end of string
-        next_section_pattern = ""
-        if i < len(sections) - 1:
-            next_section_pattern = "|".join(re.escape(s) for s in sections[i+1:])
-            pattern = rf"\*{re.escape(section)}:\*(.*?)(?=\*(?:{next_section_pattern}):\*|$)"
-        else: # For the last section, match till end of string
-            pattern = rf"\*{re.escape(section)}:\*(.*)"
-            
-        match = re.search(pattern, full_analysis_text, re.DOTALL | re.IGNORECASE)
-        
-        if match:
-            content = match.group(1).strip()
-            if content: # Only display if content is not empty
-                st.markdown(f"**{section.replace('_', ' ')}:**")
+    if uploaded_file and st.button("🔬 Analyze Medical Scan & Generate Report", key="analyze_button"):
+        # Save uploaded file and analyze
+        temp_path = save_uploaded_file(uploaded_file)
+        if temp_path:
+            try:
+                # Initial scan analysis
+                scan_analysis = analyze_medical_scan(temp_path)
                 
-                if section == "Severity Assessment":
-                    # Add color coding for severity
-                    if "Critical" in content or "High" in content:
-                        st.error(content)
-                    elif "Moderate" in content:
-                        st.warning(content)
-                    else:
-                        st.success(content)
-                elif section == "Emergency Indicators":
-                    st.markdown(f'<div class="emergency-alert">{content}</div>', unsafe_allow_html=True)
+                if scan_analysis:
+                    st.session_state.scan_analysis = scan_analysis
+                    st.session_state.patient_info = patient_info
+                    st.session_state.original_image = uploaded_file.getvalue()
+                    
+                    # Comprehensive analysis
+                    comprehensive_analysis = comprehensive_health_analysis(scan_analysis, patient_info)
+                    if comprehensive_analysis:
+                        st.session_state.comprehensive_analysis = comprehensive_analysis
+                    
+                    st.success("✅ Medical scan analysis completed successfully!")
+                else:
+                    st.error("❌ Analysis failed. Please try with a clearer image.")
+                
+            except Exception as e:
+                st.error(f"🚨 Analysis failed: {e}")
+            finally:
+                # Clean up temp file
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+    
+    # Display Results
+    if st.session_state.scan_analysis:
+        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+        st.subheader("📊 Medical Analysis Results")
+        
+        # Parse and display initial scan analysis
+        st.markdown("### 🔬 Initial Scan Analysis")
+        analysis_text = st.session_state.scan_analysis
+        
+        # Check for emergency indicators
+        emergency_found = False
+        if "emergency" in analysis_text.lower() or "critical" in analysis_text.lower():
+            emergency_found = True
+        
+        sections = [
+            "Scan Analysis", "Detected Conditions", "Condition Explanation", 
+            "Severity Assessment", "Immediate Concerns", "Recommended Precautions",
+            "Lifestyle Modifications", "Specialist Consultations", "Emergency Indicators",
+            "Follow-up Requirements", "Prognosis"
+        ]
+        
+        for section in sections:
+            pattern = rf"\*{re.escape(section)}:\*(.*?)(?=\*(?:{'|'.join(re.escape(s) for s in sections)}):\*|$)"
+            match = re.search(pattern, analysis_text, re.DOTALL | re.IGNORECASE)
+            
+            if match:
+                content = match.group(1).strip()
+                
+                # Icons for sections
+                icons = {
+                    "Scan Analysis": "🔍",
+                    "Detected Conditions": "🩺",
+                    "Condition Explanation": "📝",
+                    "Severity Assessment": "⚖️",
+                    "Immediate Concerns": "🚨",
+                    "Recommended Precautions": "🛡️",
+                    "Lifestyle Modifications": "🏃‍♂️",
+                    "Specialist Consultations": "👨‍⚕️",
+                    "Emergency Indicators": "🚨",
+                    "Follow-up Requirements": "📅",
+                    "Prognosis": "🔮"
+                }
+                
+                st.markdown(f"**{icons.get(section, '📋')} {section}:**")
+                
+                # Special handling for emergency sections
+                if section in ["Immediate Concerns", "Emergency Indicators"] and content:
+                    display_emergency_alert(content)
                 else:
                     st.write(content)
                 
                 st.markdown("---")
-            else:
-                st.info(f"'{section.replace('_', ' ')}' section was found but contained no content.")
-        # else: # Uncomment for debugging if sections are often missed
-        #     st.warning(f"Could not find '{section.replace('_', ' ')}' section in the analysis.")
-
-    # Display Comprehensive Health Analysis if available
-    if st.session_state.comprehensive_analysis:
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-        st.subheader("🌐 Comprehensive Health Analysis")
-        st.write(st.session_state.comprehensive_analysis)
-        st.markdown("---")
-
-    # PDF download
-    if st.session_state.original_image and st.session_state.scan_analysis:
-        st.subheader("📄 Download Medical Report")
         
-        pdf_bytes = create_medical_pdf(
-            st.session_state.original_image,
-            st.session_state.scan_analysis,
-            st.session_state.comprehensive_analysis if st.session_state.comprehensive_analysis else "No comprehensive analysis was generated.",
-            st.session_state.patient_info if st.session_state.patient_info else "Patient information not available."
-        )
+        # Display comprehensive analysis
+        if st.session_state.comprehensive_analysis:
+            st.markdown("### 📊 Comprehensive Health Assessment")
+            st.write(st.session_state.comprehensive_analysis)
+            st.markdown("---")
         
-        if pdf_bytes:
-            download_filename = f"medical_analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-            st.download_button(
-                label="📥 Download Complete Medical Report",
-                data=pdf_bytes,
-                file_name=download_filename,
-                mime="application/pdf",
-                help="Download a comprehensive PDF report with all analysis results and recommendations"
+        # PDF download
+        if st.session_state.original_image:
+            st.subheader("📄 Download Medical Report")
+            
+            pdf_bytes = create_medical_pdf(
+                st.session_state.original_image,
+                st.session_state.scan_analysis,
+                st.session_state.comprehensive_analysis or "Comprehensive analysis not available",
+                st.session_state.patient_info
             )
-        else:
-            st.error("Failed to generate PDF report.")
-
+            
+            if pdf_bytes:
+                download_filename = f"medical_analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                st.download_button(
+                    label="📥 Download Complete Medical Report",
+                    data=pdf_bytes,
+                    file_name=download_filename,
+                    mime="application/pdf",
+                    help="Download a comprehensive PDF report with all analysis results and recommendations"
+                )
+    
     # Important Health Reminders
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
     st.subheader("🩺 Important Health Reminders")
