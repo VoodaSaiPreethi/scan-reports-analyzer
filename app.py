@@ -101,6 +101,14 @@ st.markdown("""
         margin: 1rem 0;
     }
     
+    .diagnosis-card {
+        background-color: #FFF0F5;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 5px solid #FF69B4;
+        margin: 1rem 0;
+    }
+    
     .section-divider {
         border-bottom: 2px solid #D2B48C;
         margin: 2rem 0;
@@ -130,38 +138,55 @@ You are an expert medical diagnostician and radiologist with extensive knowledge
 Your role is to analyze medical scan reports (X-rays, CT scans, MRIs, ultrasounds, blood tests, etc.) and provide comprehensive medical insights.
 
 You must:
-1. Identify and explain medical conditions found in the scan in simple, layman-friendly language
-2. Assess severity and urgency of findings
-3. Provide detailed explanations of what the conditions mean for the patient's health
-4. Suggest appropriate precautions and lifestyle modifications
-5. Determine if the condition requires immediate medical attention
-6. Consider the patient's complete medical history, lifestyle, and family history in your analysis
-7. Provide specific recommendations for specialist consultations when needed
+1. Clearly identify and NAME all medical conditions found in the scan using precise medical terminology
+2. Provide layman-friendly explanations of each condition
+3. List conditions in order of clinical significance
+4. For each condition, specify:
+   - Exact medical name
+   - Location in the body
+   - Size/extent if applicable
+   - Any measurable parameters
+5. Assess severity and urgency of findings
+6. Provide detailed explanations of what the conditions mean for the patient's health
+7. Suggest appropriate precautions and lifestyle modifications
+8. Determine if the condition requires immediate medical attention
+9. Consider the patient's complete medical history in your analysis
+10. Provide specific recommendations for specialist consultations when needed
+
+Always use precise medical terminology first, followed by simple explanations.
 """
 
 MEDICAL_ANALYSIS_INSTRUCTIONS = """
 Analyze the medical scan report and provide a comprehensive analysis in the following structured format:
 
-*Scan Analysis:* <detailed analysis of what the scan shows>
-*Detected Conditions:* <list of medical conditions or abnormalities found>
-*Condition Explanation:* <explain each condition in simple, understandable language>
-*Severity Assessment:* <rate severity: Low/Moderate/High/Critical>
+*Diagnosed Conditions:* 
+<Bulleted list of ALL medical conditions identified with exact medical names>
+For each condition:
+- Exact medical name (primary diagnosis)
+- Location in body
+- Size/extent if applicable
+- Clinical significance
+
+*Detailed Analysis:* <detailed analysis of what the scan shows>
+*Condition Explanations:* <explain each condition in simple, understandable language>
+*Severity Assessment:* <rate severity: Low/Moderate/High/Critical with justification>
 *Immediate Concerns:* <any urgent issues that need immediate attention>
-*Recommended Precautions:* <specific precautions to take>
+*Recommended Actions:* <specific medical actions to take>
+*Precautions:* <specific precautions to take>
 *Lifestyle Modifications:* <diet, exercise, habits to change>
-*Specialist Consultations:* <which doctors to consult and when>
+*Specialist Referrals:* <which doctors to consult and timeline>
 *Emergency Indicators:* <symptoms that require immediate medical help>
-*Follow-up Requirements:* <when to get re-tested or follow-up scans>
+*Follow-up Plan:* <when to get re-tested or follow-up scans>
 *Prognosis:* <what to expect going forward>
 
-Always prioritize patient safety and provide clear, actionable advice.
+Format conditions clearly and prioritize by clinical importance.
 """
 
 COMPREHENSIVE_ANALYSIS_PROMPT = """
 You are a comprehensive medical advisor analyzing a patient's complete health profile including scan results, medical history, lifestyle, and family history.
 
 Provide a detailed, personalized health assessment that considers:
-- Current scan findings
+- Current scan findings (especially the diagnosed conditions)
 - Patient's medical history and current medications
 - Age-related health considerations
 - Lifestyle factors (diet, exercise, habits)
@@ -253,7 +278,7 @@ def comprehensive_health_analysis(scan_results, patient_info):
             {patient_info}
             
             Provide a detailed, personalized health assessment with specific recommendations, risk factors, and actionable advice.
-            Consider all aspects of the patient's health profile in your analysis.
+            Pay special attention to the diagnosed conditions and their implications for this specific patient.
             """
             response = agent.run(query)
             return response.content.strip()
@@ -314,6 +339,17 @@ def create_medical_pdf(image_data, scan_analysis, comprehensive_analysis, patien
             leading=14
         )
         
+        diagnosis_style = ParagraphStyle(
+            'Diagnosis',
+            parent=styles['Normal'],
+            fontSize=11,
+            leading=14,
+            backColor=colors.HexColor('#FFF0F5'),
+            borderWidth=1,
+            borderColor=colors.HexColor('#FF69B4'),
+            borderPadding=5
+        )
+        
         disclaimer_style = ParagraphStyle(
             'Disclaimer',
             parent=styles['Normal'],
@@ -366,15 +402,27 @@ def create_medical_pdf(image_data, scan_analysis, comprehensive_analysis, patien
             except Exception as img_error:
                 st.warning(f"Could not add image to PDF: {img_error}")
         
+        # Extract and highlight diagnosed conditions
+        if scan_analysis:
+            conditions_match = re.search(r"\*Diagnosed Conditions:\*(.*?)(?=\*(?:Detailed Analysis|Condition Explanations):\*)", 
+                                      scan_analysis, re.DOTALL | re.IGNORECASE)
+            if conditions_match:
+                conditions_content = conditions_match.group(1).strip()
+                content.append(Paragraph("🩺 Diagnosed Conditions:", heading_style))
+                content.append(Paragraph(conditions_content, diagnosis_style))
+                content.append(Spacer(1, 0.2*inch))
+        
         # Scan analysis
-        content.append(Paragraph("🔬 Initial Scan Analysis:", heading_style))
-        content.append(Paragraph(scan_analysis.replace('<', '&lt;').replace('>', '&gt;'), normal_style))
-        content.append(Spacer(1, 0.2*inch))
+        if scan_analysis:
+            content.append(Paragraph("🔬 Medical Analysis:", heading_style))
+            content.append(Paragraph(scan_analysis.replace('<', '&lt;').replace('>', '&gt;'), normal_style))
+            content.append(Spacer(1, 0.2*inch))
         
         # Comprehensive analysis
-        content.append(Paragraph("📊 Comprehensive Health Analysis:", heading_style))
-        content.append(Paragraph(comprehensive_analysis.replace('<', '&lt;').replace('>', '&gt;'), normal_style))
-        content.append(Spacer(1, 0.3*inch))
+        if comprehensive_analysis:
+            content.append(Paragraph("📊 Comprehensive Health Assessment:", heading_style))
+            content.append(Paragraph(comprehensive_analysis.replace('<', '&lt;').replace('>', '&gt;'), normal_style))
+            content.append(Spacer(1, 0.3*inch))
         
         # Footer
         content.append(Paragraph("© 2025 MediScan Medical Report Analyzer | AI-Powered Medical Analysis", 
@@ -596,49 +644,47 @@ def main():
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
         st.subheader("📊 Medical Analysis Results")
         
-        # Parse and display initial scan analysis
-        st.markdown("### 🔬 Initial Scan Analysis")
-        analysis_text = st.session_state.scan_analysis
+        # Parse and display diagnosed conditions first
+        st.markdown("### 🩺 Diagnosed Conditions")
+        conditions_match = re.search(r"\*Diagnosed Conditions:\*(.*?)(?=\*(?:Detailed Analysis|Condition Explanations):\*)", 
+                                   st.session_state.scan_analysis, re.DOTALL | re.IGNORECASE)
         
-        # Check for emergency indicators
-        emergency_found = False
-        if "emergency" in analysis_text.lower() or "critical" in analysis_text.lower():
-            emergency_found = True
+        if conditions_match:
+            conditions_content = conditions_match.group(1).strip()
+            st.markdown(f"""
+            <div class="diagnosis-card">
+            {conditions_content}
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning("No specific conditions identified in the analysis")
         
+        st.markdown("---")
+        
+        # Rest of the analysis sections
         sections = [
-            "Scan Analysis", "Detected Conditions", "Condition Explanation", 
-            "Severity Assessment", "Immediate Concerns", "Recommended Precautions",
-            "Lifestyle Modifications", "Specialist Consultations", "Emergency Indicators",
-            "Follow-up Requirements", "Prognosis"
+            "Detailed Analysis", "Condition Explanations", "Severity Assessment", 
+            "Immediate Concerns", "Recommended Actions", "Precautions",
+            "Lifestyle Modifications", "Specialist Referrals", "Emergency Indicators",
+            "Follow-up Plan", "Prognosis"
         ]
         
         for section in sections:
             pattern = rf"\*{re.escape(section)}:\*(.*?)(?=\*(?:{'|'.join(re.escape(s) for s in sections)}):\*|$)"
-            match = re.search(pattern, analysis_text, re.DOTALL | re.IGNORECASE)
+            match = re.search(pattern, st.session_state.scan_analysis, re.DOTALL | re.IGNORECASE)
             
             if match:
                 content = match.group(1).strip()
+                st.markdown(f"**{section.replace('_', ' ')}:**")
                 
-                # Icons for sections
-                icons = {
-                    "Scan Analysis": "🔍",
-                    "Detected Conditions": "🩺",
-                    "Condition Explanation": "📝",
-                    "Severity Assessment": "⚖️",
-                    "Immediate Concerns": "🚨",
-                    "Recommended Precautions": "🛡️",
-                    "Lifestyle Modifications": "🏃‍♂️",
-                    "Specialist Consultations": "👨‍⚕️",
-                    "Emergency Indicators": "🚨",
-                    "Follow-up Requirements": "📅",
-                    "Prognosis": "🔮"
-                }
-                
-                st.markdown(f"**{icons.get(section, '📋')} {section}:**")
-                
-                # Special handling for emergency sections
-                if section in ["Immediate Concerns", "Emergency Indicators"] and content:
-                    display_emergency_alert(content)
+                if section == "Severity Assessment":
+                    # Add color coding for severity
+                    if "Critical" in content or "High" in content:
+                        st.error(content)
+                    elif "Moderate" in content:
+                        st.warning(content)
+                    else:
+                        st.success(content)
                 else:
                     st.write(content)
                 
