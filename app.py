@@ -18,37 +18,61 @@ if not TAVILY_API_KEY or not GOOGLE_API_KEY:
 
 MAX_IMAGE_WIDTH = 400
 
-# System prompt for medical analysis
+# Enhanced system prompt for medical analysis
 SYSTEM_PROMPT = """You are a specialized medical AI assistant designed to analyze medical scan reports and provide comprehensive health assessments. Your role is to:
 
 1. Analyze medical scans (X-rays, MRIs, CT scans, blood reports, etc.) and identify potential health issues
 2. STATE THE EXACT DISEASE OR PROBLEM clearly and prominently
-3. Provide detailed explanations in simple, layman-friendly language
-4. Consider patient's medical history, lifestyle, and other factors for comprehensive analysis
-5. Identify emergency situations and provide appropriate guidance
-6. Always recommend consulting healthcare professionals for proper diagnosis and treatment
+3. Provide detailed explanations in simple, layman-friendly language that anyone can understand
+4. Recommend specific medical specialists and urgency level
+5. Create personalized lifestyle and dietary plans based on the diagnosis
+6. Consider patient's medical history, lifestyle, and other factors for comprehensive analysis
+7. Identify emergency situations and provide appropriate guidance
+8. Always recommend consulting healthcare professionals for proper diagnosis and treatment
 
-You must be thorough, accurate, and emphasize the importance of professional medical consultation."""
+You must be thorough, accurate, empathetic, and emphasize the importance of professional medical consultation."""
 
 INSTRUCTIONS = """
-When analyzing medical reports:
+When analyzing medical reports, provide a comprehensive response with these sections:
 
-1. **PRIMARY ANALYSIS**: First, carefully examine the medical scan/report and STATE THE EXACT DISEASE OR PROBLEM in bold at the beginning of your response.
+1. **DIAGNOSIS IDENTIFICATION**: STATE THE EXACT DISEASE OR PROBLEM in bold at the beginning of your response.
 
-2. **DETAILED EXPLANATION**: Provide a comprehensive explanation of the findings in simple language that a layperson can understand.
+2. **LAYMAN'S EXPLANATION**: Explain the condition in simple, everyday language that a person without medical background can easily understand. Use analogies and examples where helpful.
 
-3. **SEVERITY ASSESSMENT**: Clearly indicate if this is an emergency situation requiring immediate medical attention.
+3. **SEVERITY & URGENCY ASSESSMENT**: Clearly indicate:
+   - How serious is this condition?
+   - Is this an emergency requiring immediate attention?
+   - What happens if left untreated?
 
-4. **LIFESTYLE CORRELATION**: Analyze how the patient's lifestyle, diet, habits, age, and medical history might be contributing to the condition.
+4. **MEDICAL SPECIALIST RECOMMENDATIONS**: Specify exactly which doctors to consult:
+   - Primary specialist (e.g., Cardiologist, Orthopedist, Neurologist)
+   - Secondary specialists if needed
+   - When to see them (immediately, within a week, within a month)
+   - What to expect during the consultation
 
-5. **PRECAUTIONS & RECOMMENDATIONS**: Provide specific precautions and lifestyle modifications to prevent worsening of the condition.
+5. **LIFESTYLE CORRELATION**: Analyze how the patient's current lifestyle factors might be contributing to or affecting the condition.
 
-6. **CONSULTATION GUIDANCE**: Recommend which type of specialist the patient should consult and urgency level.
+6. **PERSONALIZED DIETARY PLAN**: Based on the diagnosis, provide specific dietary recommendations:
+   - Foods to include and why
+   - Foods to avoid and why
+   - Meal timing and frequency
+   - Portion sizes if relevant
+   - Specific nutrients needed for recovery/management
 
-7. **FOLLOW-UP**: Suggest monitoring and follow-up requirements.
+7. **LIFESTYLE MODIFICATION PLAN**: Create a detailed plan including:
+   - Exercise recommendations (type, duration, frequency)
+   - Sleep schedule adjustments
+   - Stress management techniques
+   - Daily routine modifications
+   - Habits to develop or eliminate
+
+8. **MONITORING & FOLLOW-UP**: Suggest what to monitor and when to follow up.
+
+9. **PRECAUTIONS & RED FLAGS**: What symptoms to watch out for that would require immediate medical attention.
 
 Always emphasize that this is an AI analysis and professional medical consultation is essential for proper diagnosis and treatment.
 Provide your response in plain text format without any markdown headers or section titles.
+Use clear, compassionate language that reduces anxiety while being informative.
 """
 
 def resize_image_for_display(image_file):
@@ -90,6 +114,8 @@ def collect_patient_information():
     with col1:
         age = st.number_input("Age", min_value=1, max_value=120, value=30)
         gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+        height = st.number_input("Height (cm)", min_value=100, max_value=250, value=170)
+        weight = st.number_input("Weight (kg)", min_value=30, max_value=300, value=70)
         
         # Medical History
         st.subheader("🏥 Medical History")
@@ -115,13 +141,55 @@ def collect_patient_information():
         alcohol = st.selectbox("Alcohol Consumption", ["Never", "Occasional", "Regular", "Heavy"])
         exercise = st.selectbox("Exercise Frequency", ["Never", "Rarely", "2-3 times/week", "Daily"])
         
-        diet = st.text_area(
-            "Diet Description",
-            placeholder="Describe your typical diet, eating habits, and any dietary restrictions..."
+        sleep = st.selectbox("Sleep Quality", ["Poor", "Fair", "Good", "Excellent"])
+        sleep_hours = st.number_input("Average Sleep Hours", min_value=3, max_value=12, value=7)
+        stress = st.selectbox("Stress Level", ["Low", "Moderate", "High", "Very High"])
+        
+        occupation = st.text_input("Occupation", placeholder="Your job/profession")
+        
+        # Water intake
+        water_intake = st.number_input("Daily Water Intake (glasses)", min_value=0, max_value=20, value=8)
+    
+    # Enhanced Diet Information
+    st.subheader("🍽️ Detailed Diet Information")
+    
+    diet_col1, diet_col2 = st.columns(2)
+    
+    with diet_col1:
+        diet_type = st.selectbox("Diet Type", ["Omnivore", "Vegetarian", "Vegan", "Keto", "Mediterranean", "Other"])
+        
+        meal_frequency = st.selectbox("Meal Frequency", ["2 meals/day", "3 meals/day", "4-5 small meals/day", "Irregular"])
+        
+        breakfast = st.text_area(
+            "Typical Breakfast",
+            placeholder="Describe what you usually eat for breakfast..."
         )
         
-        sleep = st.selectbox("Sleep Quality", ["Poor", "Fair", "Good", "Excellent"])
-        stress = st.selectbox("Stress Level", ["Low", "Moderate", "High", "Very High"])
+        lunch = st.text_area(
+            "Typical Lunch",
+            placeholder="Describe what you usually eat for lunch..."
+        )
+    
+    with diet_col2:
+        dinner = st.text_area(
+            "Typical Dinner",
+            placeholder="Describe what you usually eat for dinner..."
+        )
+        
+        snacks = st.text_area(
+            "Snacks & Beverages",
+            placeholder="List your usual snacks, beverages, and their frequency..."
+        )
+        
+        food_restrictions = st.text_area(
+            "Food Restrictions/Preferences",
+            placeholder="Any foods you avoid or prefer, cultural dietary restrictions..."
+        )
+        
+        supplements = st.text_area(
+            "Supplements/Vitamins",
+            placeholder="List any supplements, vitamins, or health drinks you take..."
+        )
     
     # Family History
     st.subheader("👥 Family Medical History")
@@ -131,34 +199,49 @@ def collect_patient_information():
     )
     
     # Recent Incidents
-    st.subheader("⚠️ Recent Incidents")
+    st.subheader("⚠️ Recent Incidents & Symptoms")
     accidents = st.text_area(
         "Recent Accidents or Injuries",
         placeholder="Describe any recent accidents, injuries, or traumatic events..."
     )
     
     # Current Symptoms
-    st.subheader("🩺 Current Symptoms")
     symptoms = st.text_area(
         "Current Symptoms",
         placeholder="Describe any current symptoms, pain, or discomfort you're experiencing..."
     )
     
+    # Pain Scale
+    pain_level = st.selectbox("Current Pain Level (0-10)", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    
     return {
         "age": age,
         "gender": gender,
+        "height": height,
+        "weight": weight,
         "previous_conditions": previous_conditions,
         "current_medications": current_medications,
         "allergies": allergies,
         "smoking": smoking,
         "alcohol": alcohol,
         "exercise": exercise,
-        "diet": diet,
         "sleep": sleep,
+        "sleep_hours": sleep_hours,
         "stress": stress,
+        "occupation": occupation,
+        "water_intake": water_intake,
+        "diet_type": diet_type,
+        "meal_frequency": meal_frequency,
+        "breakfast": breakfast,
+        "lunch": lunch,
+        "dinner": dinner,
+        "snacks": snacks,
+        "food_restrictions": food_restrictions,
+        "supplements": supplements,
         "family_history": family_history,
         "accidents": accidents,
-        "symptoms": symptoms
+        "symptoms": symptoms,
+        "pain_level": pain_level
     }
 
 def analyze_medical_scan(image_path, patient_info):
@@ -168,39 +251,72 @@ def analyze_medical_scan(image_path, patient_info):
         return None
     
     try:
-        with st.spinner("🔬 Analyzing medical scan and patient information..."):
+        with st.spinner("🔬 Analyzing medical scan and creating personalized health plan..."):
+            # Calculate BMI
+            bmi = patient_info['weight'] / ((patient_info['height'] / 100) ** 2)
+            
             # Create comprehensive prompt with patient information
             prompt = f"""
-            Please analyze this medical scan report and provide a comprehensive health assessment.
+            Please analyze this medical scan report and provide a comprehensive health assessment with personalized recommendations.
 
             PATIENT INFORMATION:
             - Age: {patient_info['age']}
             - Gender: {patient_info['gender']}
+            - Height: {patient_info['height']} cm
+            - Weight: {patient_info['weight']} kg
+            - BMI: {bmi:.1f}
             - Previous Medical Conditions: {patient_info['previous_conditions']}
             - Current Medications: {patient_info['current_medications']}
             - Allergies: {patient_info['allergies']}
             - Smoking Status: {patient_info['smoking']}
             - Alcohol Consumption: {patient_info['alcohol']}
             - Exercise Frequency: {patient_info['exercise']}
-            - Diet: {patient_info['diet']}
-            - Sleep Quality: {patient_info['sleep']}
+            - Sleep Quality: {patient_info['sleep']} ({patient_info['sleep_hours']} hours/night)
             - Stress Level: {patient_info['stress']}
+            - Occupation: {patient_info['occupation']}
+            - Water Intake: {patient_info['water_intake']} glasses/day
+            - Diet Type: {patient_info['diet_type']}
+            - Meal Frequency: {patient_info['meal_frequency']}
+            - Typical Breakfast: {patient_info['breakfast']}
+            - Typical Lunch: {patient_info['lunch']}
+            - Typical Dinner: {patient_info['dinner']}
+            - Snacks & Beverages: {patient_info['snacks']}
+            - Food Restrictions: {patient_info['food_restrictions']}
+            - Supplements: {patient_info['supplements']}
             - Family Medical History: {patient_info['family_history']}
             - Recent Accidents/Injuries: {patient_info['accidents']}
             - Current Symptoms: {patient_info['symptoms']}
+            - Pain Level: {patient_info['pain_level']}/10
 
-            ANALYSIS REQUIREMENTS:
+            COMPREHENSIVE ANALYSIS REQUIREMENTS:
             1. STATE THE EXACT DISEASE OR PROBLEM in bold at the beginning
-            2. Provide detailed explanation in layman's terms
-            3. Assess severity and urgency
-            4. Correlate findings with patient's lifestyle and history
-            5. Recommend precautions and lifestyle modifications
-            6. Specify which healthcare specialist to consult
-            7. Indicate if this is an emergency situation
-            8. Suggest follow-up timeline
+            2. Provide detailed explanation in simple layman's terms with analogies
+            3. Assess severity and urgency with clear action timeline
+            4. Recommend specific medical specialists with consultation urgency
+            5. Create a personalized dietary plan based on the diagnosis
+            6. Develop a complete lifestyle modification plan
+            7. Correlate findings with patient's current lifestyle and diet
+            8. Provide monitoring guidelines and red flags to watch for
+            9. Consider the patient's occupation, stress level, and family history
 
-            Please provide a thorough analysis considering all the patient information provided.
+            DIETARY PLAN REQUIREMENTS:
+            - Specific foods to include and avoid
+            - Meal timing and portion recommendations
+            - Recipes or meal ideas if helpful
+            - Supplements needed for recovery/management
+            - Hydration recommendations
+
+            LIFESTYLE PLAN REQUIREMENTS:
+            - Exercise type, duration, and frequency
+            - Sleep schedule optimization
+            - Stress management techniques
+            - Work-life balance recommendations
+            - Daily routine modifications
+
+            Please provide a thorough, empathetic analysis that considers all aspects of the patient's life.
+            Use simple language and explain medical terms clearly.
             Format your response as plain text without section headers or markdown formatting.
+            Be encouraging and supportive while being medically accurate.
             """
             
             response = agent.run(prompt, images=[image_path])
@@ -224,39 +340,57 @@ def save_uploaded_file(uploaded_file):
 def create_report_for_download(patient_info, analysis_result):
     """Create a formatted report for download."""
     current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    bmi = patient_info['weight'] / ((patient_info['height'] / 100) ** 2)
     
     report = f"""
-MEDICAL SCAN ANALYSIS REPORT
+COMPREHENSIVE MEDICAL SCAN ANALYSIS REPORT
 Generated on: {current_date}
 
 PATIENT INFORMATION:
 Age: {patient_info['age']}
 Gender: {patient_info['gender']}
+Height: {patient_info['height']} cm
+Weight: {patient_info['weight']} kg
+BMI: {bmi:.1f}
 Previous Medical Conditions: {patient_info['previous_conditions']}
 Current Medications: {patient_info['current_medications']}
 Allergies: {patient_info['allergies']}
 Smoking Status: {patient_info['smoking']}
 Alcohol Consumption: {patient_info['alcohol']}
 Exercise Frequency: {patient_info['exercise']}
-Diet: {patient_info['diet']}
-Sleep Quality: {patient_info['sleep']}
+Sleep Quality: {patient_info['sleep']} ({patient_info['sleep_hours']} hours/night)
 Stress Level: {patient_info['stress']}
+Occupation: {patient_info['occupation']}
+Water Intake: {patient_info['water_intake']} glasses/day
+
+DIETARY INFORMATION:
+Diet Type: {patient_info['diet_type']}
+Meal Frequency: {patient_info['meal_frequency']}
+Typical Breakfast: {patient_info['breakfast']}
+Typical Lunch: {patient_info['lunch']}
+Typical Dinner: {patient_info['dinner']}
+Snacks & Beverages: {patient_info['snacks']}
+Food Restrictions: {patient_info['food_restrictions']}
+Supplements: {patient_info['supplements']}
+
+MEDICAL HISTORY:
 Family Medical History: {patient_info['family_history']}
 Recent Accidents/Injuries: {patient_info['accidents']}
 Current Symptoms: {patient_info['symptoms']}
+Pain Level: {patient_info['pain_level']}/10
 
 ANALYSIS RESULTS:
 {analysis_result}
 
 DISCLAIMER:
-This AI analysis is for informational purposes only and should not replace professional medical consultation. Always consult with qualified healthcare professionals for proper diagnosis and treatment.
+This AI analysis is for informational purposes only and should not replace professional medical consultation. Always consult with qualified healthcare professionals for proper diagnosis and treatment. The dietary and lifestyle recommendations should be reviewed with your healthcare provider before implementation.
 """
     return report
 
 def main():
     # Page configuration with light theme
     st.set_page_config(
-        page_title="Medical Scan Report Analyzer",
+        page_title="Enhanced Medical Scan Analyzer",
         layout="wide",
         initial_sidebar_state="collapsed",
         page_icon="🩺"
@@ -291,6 +425,9 @@ def main():
         .stNumberInput>div>div>input {
             background-color: #f5f1ed;
         }
+        .stTextInput>div>div>input {
+            background-color: #f5f1ed;
+        }
         h1, h2, h3 {
             color: #5d4037;
         }
@@ -307,12 +444,19 @@ def main():
             font-size: 1.2rem;
             margin-bottom: 2rem;
         }
+        .analysis-result {
+            background-color: #f5f1ed;
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid #e8d5c7;
+            margin: 1rem 0;
+        }
     </style>
     """, unsafe_allow_html=True)
     
     # Header
-    st.markdown('<h1 class="main-title">🩺 Medical Scan Report Analyzer</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Upload your medical scan report for comprehensive AI-powered analysis</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">🩺 Enhanced Medical Scan Analyzer</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Upload your medical scan report for comprehensive AI-powered analysis with personalized diet and lifestyle recommendations</p>', unsafe_allow_html=True)
     
     # File upload section
     st.subheader("📁 Upload Medical Scan Report")
@@ -336,43 +480,51 @@ def main():
     patient_info = collect_patient_information()
     
     # Analysis button - only show if file is uploaded
-    if uploaded_file and st.button("🔬 Analyze Medical Scan Report", type="primary"):
-        if all([patient_info['age'], patient_info['gender']]):
+    if uploaded_file and st.button("🔬 Analyze Medical Scan & Create Personalized Plan", type="primary"):
+        if all([patient_info['age'], patient_info['gender'], patient_info['height'], patient_info['weight']]):
             temp_path = save_uploaded_file(uploaded_file)
             if temp_path:
                 st.markdown("---")
+                st.subheader("📊 Analysis Results & Personalized Recommendations")
+                
                 analysis_result = analyze_medical_scan(temp_path, patient_info)
                 
                 if analysis_result:
-                    # Display analysis without section headers
-                    st.write(analysis_result)
+                    # Display analysis in a styled container
+                    st.markdown(f'<div class="analysis-result">{analysis_result}</div>', unsafe_allow_html=True)
                     
                     # Create download button
                     report_content = create_report_for_download(patient_info, analysis_result)
                     current_date = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                     
                     st.download_button(
-                        label="📥 Download Analysis Report",
+                        label="📥 Download Complete Analysis Report",
                         data=report_content,
-                        file_name=f"medical_analysis_report_{current_date}.txt",
+                        file_name=f"comprehensive_medical_analysis_{current_date}.txt",
                         mime="text/plain",
-                        help="Download the complete analysis report"
+                        help="Download the complete analysis report with personalized recommendations"
                     )
                 
                 os.unlink(temp_path)  # Clean up after analysis
         else:
-            st.error("Please fill in at least your age and gender before analysis.")
+            st.error("Please fill in at least your age, gender, height, and weight before analysis.")
     
     # Show message if no file uploaded
     if not uploaded_file:
-        st.info("Please upload a medical scan report to proceed with analysis.")
+        st.info("Please upload a medical scan report to proceed with comprehensive analysis.")
     
-    # Disclaimer
+    # Enhanced Disclaimer
     st.markdown("---")
     st.markdown("""
-    **⚠️ Important Disclaimer:**
-    This AI analysis is for informational purposes only and should not replace professional medical consultation. 
-    Always consult with qualified healthcare professionals for proper diagnosis and treatment.
+    **⚠️ Important Medical Disclaimer:**
+    
+    This AI analysis is for informational and educational purposes only and should not replace professional medical consultation. 
+    The recommendations provided are based on general medical knowledge and should be reviewed with qualified healthcare professionals 
+    before implementation. Always consult with your doctor, specialist, or certified nutritionist for proper diagnosis, treatment, 
+    and personalized dietary/lifestyle advice.
+    
+    **🚨 Emergency Situations:** If you experience severe symptoms, chest pain, difficulty breathing, or any medical emergency, 
+    seek immediate medical attention by calling emergency services or visiting the nearest emergency room.
     """)
 
 if __name__ == "__main__":
