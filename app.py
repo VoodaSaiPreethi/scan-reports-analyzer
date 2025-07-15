@@ -471,7 +471,7 @@ def main():
         if uploaded_file.type != "application/pdf":
             resized_image = resize_image_for_display(uploaded_file)
             if resized_image:
-                st.image(resized_image, caption="Uploaded Medical Scan", use_column_width=True)
+                st.image(resized_image, caption="Uploaded Medical Scan", use_container_width=True)
         else:
             st.success("PDF file uploaded successfully")
     
