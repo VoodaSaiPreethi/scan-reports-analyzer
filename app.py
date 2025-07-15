@@ -6,6 +6,7 @@ from phi.agent import Agent
 from phi.model.google import Gemini
 from phi.tools.tavily import TavilyTools
 from tempfile import NamedTemporaryFile
+import datetime
 
 # API Keys
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY")
@@ -47,6 +48,7 @@ When analyzing medical reports:
 7. **FOLLOW-UP**: Suggest monitoring and follow-up requirements.
 
 Always emphasize that this is an AI analysis and professional medical consultation is essential for proper diagnosis and treatment.
+Provide your response in plain text format without any markdown headers or section titles.
 """
 
 def resize_image_for_display(image_file):
@@ -163,7 +165,7 @@ def analyze_medical_scan(image_path, patient_info):
     """Analyze the medical scan using AI agent with patient information."""
     agent = get_agent()
     if agent is None:
-        return
+        return None
     
     try:
         with st.spinner("🔬 Analyzing medical scan and patient information..."):
@@ -188,7 +190,7 @@ def analyze_medical_scan(image_path, patient_info):
             - Current Symptoms: {patient_info['symptoms']}
 
             ANALYSIS REQUIREMENTS:
-            1. **STATE THE EXACT DISEASE OR PROBLEM** (in bold at the beginning)
+            1. STATE THE EXACT DISEASE OR PROBLEM in bold at the beginning
             2. Provide detailed explanation in layman's terms
             3. Assess severity and urgency
             4. Correlate findings with patient's lifestyle and history
@@ -198,13 +200,15 @@ def analyze_medical_scan(image_path, patient_info):
             8. Suggest follow-up timeline
 
             Please provide a thorough analysis considering all the patient information provided.
+            Format your response as plain text without section headers or markdown formatting.
             """
             
             response = agent.run(prompt, images=[image_path])
-            st.markdown(response.content)
+            return response.content
             
     except Exception as e:
         st.error(f"Error during analysis: {e}")
+        return None
 
 def save_uploaded_file(uploaded_file):
     """Save the uploaded file to disk."""
@@ -217,6 +221,38 @@ def save_uploaded_file(uploaded_file):
         st.error(f"Error saving uploaded file: {e}")
         return None
 
+def create_report_for_download(patient_info, analysis_result):
+    """Create a formatted report for download."""
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    report = f"""
+MEDICAL SCAN ANALYSIS REPORT
+Generated on: {current_date}
+
+PATIENT INFORMATION:
+Age: {patient_info['age']}
+Gender: {patient_info['gender']}
+Previous Medical Conditions: {patient_info['previous_conditions']}
+Current Medications: {patient_info['current_medications']}
+Allergies: {patient_info['allergies']}
+Smoking Status: {patient_info['smoking']}
+Alcohol Consumption: {patient_info['alcohol']}
+Exercise Frequency: {patient_info['exercise']}
+Diet: {patient_info['diet']}
+Sleep Quality: {patient_info['sleep']}
+Stress Level: {patient_info['stress']}
+Family Medical History: {patient_info['family_history']}
+Recent Accidents/Injuries: {patient_info['accidents']}
+Current Symptoms: {patient_info['symptoms']}
+
+ANALYSIS RESULTS:
+{analysis_result}
+
+DISCLAIMER:
+This AI analysis is for informational purposes only and should not replace professional medical consultation. Always consult with qualified healthcare professionals for proper diagnosis and treatment.
+"""
+    return report
+
 def main():
     # Page configuration with light theme
     st.set_page_config(
@@ -226,7 +262,7 @@ def main():
         page_icon="🩺"
     )
     
-    # Custom CSS for light nude theme
+    # Custom CSS for light nude theme and centered heading
     st.markdown("""
     <style>
         .main {
@@ -258,12 +294,25 @@ def main():
         h1, h2, h3 {
             color: #5d4037;
         }
+        .main-title {
+            text-align: center;
+            font-weight: bold;
+            color: #5d4037;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #5d4037;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
     </style>
     """, unsafe_allow_html=True)
     
     # Header
-    st.title("🩺 Medical Scan Report Analyzer")
-    st.markdown("### Upload your medical scan report for comprehensive AI-powered analysis")
+    st.markdown('<h1 class="main-title">🩺 Medical Scan Report Analyzer</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Upload your medical scan report for comprehensive AI-powered analysis</p>', unsafe_allow_html=True)
     
     # File upload section
     st.subheader("📁 Upload Medical Scan Report")
@@ -281,21 +330,42 @@ def main():
                 st.image(resized_image, caption="Uploaded Medical Scan", use_column_width=True)
         else:
             st.success("PDF file uploaded successfully")
-        
-        # Collect patient information
-        patient_info = collect_patient_information()
-        
-        # Analysis button
-        if st.button("🔬 Analyze Medical Scan Report", type="primary"):
-            if all([patient_info['age'], patient_info['gender']]):
-                temp_path = save_uploaded_file(uploaded_file)
-                if temp_path:
-                    st.markdown("---")
-                    st.subheader("📊 Medical Analysis Report")
-                    analyze_medical_scan(temp_path, patient_info)
-                    os.unlink(temp_path)  # Clean up after analysis
-            else:
-                st.error("Please fill in at least your age and gender before analysis.")
+    
+    # Always show patient information form
+    st.markdown("---")
+    patient_info = collect_patient_information()
+    
+    # Analysis button - only show if file is uploaded
+    if uploaded_file and st.button("🔬 Analyze Medical Scan Report", type="primary"):
+        if all([patient_info['age'], patient_info['gender']]):
+            temp_path = save_uploaded_file(uploaded_file)
+            if temp_path:
+                st.markdown("---")
+                analysis_result = analyze_medical_scan(temp_path, patient_info)
+                
+                if analysis_result:
+                    # Display analysis without section headers
+                    st.write(analysis_result)
+                    
+                    # Create download button
+                    report_content = create_report_for_download(patient_info, analysis_result)
+                    current_date = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    
+                    st.download_button(
+                        label="📥 Download Analysis Report",
+                        data=report_content,
+                        file_name=f"medical_analysis_report_{current_date}.txt",
+                        mime="text/plain",
+                        help="Download the complete analysis report"
+                    )
+                
+                os.unlink(temp_path)  # Clean up after analysis
+        else:
+            st.error("Please fill in at least your age and gender before analysis.")
+    
+    # Show message if no file uploaded
+    if not uploaded_file:
+        st.info("Please upload a medical scan report to proceed with analysis.")
     
     # Disclaimer
     st.markdown("---")
