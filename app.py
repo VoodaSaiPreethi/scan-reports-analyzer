@@ -7,6 +7,12 @@ from phi.model.google import Gemini
 from phi.tools.tavily import TavilyTools
 from tempfile import NamedTemporaryFile
 import datetime
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 
 # API Keys
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY")
@@ -106,142 +112,81 @@ def get_agent():
         return None
 
 def collect_patient_information():
-    """Collect comprehensive patient information."""
+    """Collect comprehensive patient information in a streamlined format."""
     st.subheader("📋 Patient Information")
     
+    # Basic Information
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        age = st.number_input("Age", min_value=1, max_value=120, value=30)
+    with col2:
+        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+    with col3:
+        height = st.number_input("Height (cm)", min_value=100, max_value=250, value=170)
+    with col4:
+        weight = st.number_input("Weight (kg)", min_value=30, max_value=300, value=70)
+    
+    # Medical History (condensed)
+    st.subheader("🏥 Medical Background")
     col1, col2 = st.columns(2)
     
     with col1:
-        age = st.number_input("Age", min_value=1, max_value=120, value=30)
-        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-        height = st.number_input("Height (cm)", min_value=100, max_value=250, value=170)
-        weight = st.number_input("Weight (kg)", min_value=30, max_value=300, value=70)
-        
-        # Medical History
-        st.subheader("🏥 Medical History")
-        previous_conditions = st.text_area(
-            "Previous Medical Conditions",
-            placeholder="List any previous diagnoses, surgeries, or chronic conditions..."
+        medical_history = st.text_area(
+            "Medical History & Current Medications",
+            placeholder="Previous conditions, current medications, allergies...",
+            height=100
         )
         
-        current_medications = st.text_area(
-            "Current Medications",
-            placeholder="List all medications, supplements, and dosages you are currently taking..."
-        )
-        
-        allergies = st.text_area(
-            "Allergies",
-            placeholder="List any known allergies to medications, foods, or other substances..."
+        lifestyle_habits = st.text_area(
+            "Lifestyle Habits",
+            placeholder="Smoking, alcohol, exercise frequency, sleep pattern...",
+            height=100
         )
     
     with col2:
-        # Lifestyle Information
-        st.subheader("🏃‍♂️ Lifestyle Information")
-        smoking = st.selectbox("Smoking Status", ["Never", "Former", "Current"])
-        alcohol = st.selectbox("Alcohol Consumption", ["Never", "Occasional", "Regular", "Heavy"])
-        exercise = st.selectbox("Exercise Frequency", ["Never", "Rarely", "2-3 times/week", "Daily"])
-        
-        sleep = st.selectbox("Sleep Quality", ["Poor", "Fair", "Good", "Excellent"])
-        sleep_hours = st.number_input("Average Sleep Hours", min_value=3, max_value=12, value=7)
-        stress = st.selectbox("Stress Level", ["Low", "Moderate", "High", "Very High"])
-        
-        occupation = st.text_input("Occupation", placeholder="Your job/profession")
-        
-        # Water intake
-        water_intake = st.number_input("Daily Water Intake (glasses)", min_value=0, max_value=20, value=8)
-    
-    # Enhanced Diet Information
-    st.subheader("🍽️ Detailed Diet Information")
-    
-    diet_col1, diet_col2 = st.columns(2)
-    
-    with diet_col1:
-        diet_type = st.selectbox("Diet Type", ["Omnivore", "Vegetarian", "Vegan", "Keto", "Mediterranean", "Other"])
-        
-        meal_frequency = st.selectbox("Meal Frequency", ["2 meals/day", "3 meals/day", "4-5 small meals/day", "Irregular"])
-        
-        breakfast = st.text_area(
-            "Typical Breakfast",
-            placeholder="Describe what you usually eat for breakfast..."
+        current_diet = st.text_area(
+            "Current Diet Pattern",
+            placeholder="Typical meals, diet type, food restrictions...",
+            height=100
         )
         
-        lunch = st.text_area(
-            "Typical Lunch",
-            placeholder="Describe what you usually eat for lunch..."
+        symptoms_concerns = st.text_area(
+            "Current Symptoms & Concerns",
+            placeholder="Current symptoms, pain level, recent incidents...",
+            height=100
         )
     
-    with diet_col2:
-        dinner = st.text_area(
-            "Typical Dinner",
-            placeholder="Describe what you usually eat for dinner..."
-        )
-        
-        snacks = st.text_area(
-            "Snacks & Beverages",
-            placeholder="List your usual snacks, beverages, and their frequency..."
-        )
-        
-        food_restrictions = st.text_area(
-            "Food Restrictions/Preferences",
-            placeholder="Any foods you avoid or prefer, cultural dietary restrictions..."
-        )
-        
-        supplements = st.text_area(
-            "Supplements/Vitamins",
-            placeholder="List any supplements, vitamins, or health drinks you take..."
-        )
+    # Quick selections for common items
+    st.subheader("⚡ Quick Assessment")
+    col1, col2, col3 = st.columns(3)
     
-    # Family History
-    st.subheader("👥 Family Medical History")
-    family_history = st.text_area(
-        "Family Medical History",
-        placeholder="List any significant medical conditions in your family (parents, siblings, grandparents)..."
-    )
+    with col1:
+        stress_level = st.selectbox("Stress Level", ["Low", "Moderate", "High", "Very High"])
+        exercise_freq = st.selectbox("Exercise Frequency", ["Never", "Rarely", "2-3 times/week", "Daily"])
     
-    # Recent Incidents
-    st.subheader("⚠️ Recent Incidents & Symptoms")
-    accidents = st.text_area(
-        "Recent Accidents or Injuries",
-        placeholder="Describe any recent accidents, injuries, or traumatic events..."
-    )
+    with col2:
+        sleep_quality = st.selectbox("Sleep Quality", ["Poor", "Fair", "Good", "Excellent"])
+        pain_level = st.selectbox("Current Pain Level", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     
-    # Current Symptoms
-    symptoms = st.text_area(
-        "Current Symptoms",
-        placeholder="Describe any current symptoms, pain, or discomfort you're experiencing..."
-    )
-    
-    # Pain Scale
-    pain_level = st.selectbox("Current Pain Level (0-10)", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    with col3:
+        smoking = st.selectbox("Smoking", ["Never", "Former", "Current"])
+        alcohol = st.selectbox("Alcohol", ["Never", "Occasional", "Regular"])
     
     return {
         "age": age,
         "gender": gender,
         "height": height,
         "weight": weight,
-        "previous_conditions": previous_conditions,
-        "current_medications": current_medications,
-        "allergies": allergies,
+        "medical_history": medical_history,
+        "lifestyle_habits": lifestyle_habits,
+        "current_diet": current_diet,
+        "symptoms_concerns": symptoms_concerns,
+        "stress_level": stress_level,
+        "exercise_freq": exercise_freq,
+        "sleep_quality": sleep_quality,
+        "pain_level": pain_level,
         "smoking": smoking,
-        "alcohol": alcohol,
-        "exercise": exercise,
-        "sleep": sleep,
-        "sleep_hours": sleep_hours,
-        "stress": stress,
-        "occupation": occupation,
-        "water_intake": water_intake,
-        "diet_type": diet_type,
-        "meal_frequency": meal_frequency,
-        "breakfast": breakfast,
-        "lunch": lunch,
-        "dinner": dinner,
-        "snacks": snacks,
-        "food_restrictions": food_restrictions,
-        "supplements": supplements,
-        "family_history": family_history,
-        "accidents": accidents,
-        "symptoms": symptoms,
-        "pain_level": pain_level
+        "alcohol": alcohol
     }
 
 def analyze_medical_scan(image_path, patient_info):
@@ -260,33 +205,21 @@ def analyze_medical_scan(image_path, patient_info):
             Please analyze this medical scan report and provide a comprehensive health assessment with personalized recommendations.
 
             PATIENT INFORMATION:
-            - Age: {patient_info['age']}
+            - Age: {patient_info['age']} years
             - Gender: {patient_info['gender']}
             - Height: {patient_info['height']} cm
             - Weight: {patient_info['weight']} kg
             - BMI: {bmi:.1f}
-            - Previous Medical Conditions: {patient_info['previous_conditions']}
-            - Current Medications: {patient_info['current_medications']}
-            - Allergies: {patient_info['allergies']}
+            - Medical History & Medications: {patient_info['medical_history']}
+            - Lifestyle Habits: {patient_info['lifestyle_habits']}
+            - Current Diet Pattern: {patient_info['current_diet']}
+            - Current Symptoms & Concerns: {patient_info['symptoms_concerns']}
+            - Stress Level: {patient_info['stress_level']}
+            - Exercise Frequency: {patient_info['exercise_freq']}
+            - Sleep Quality: {patient_info['sleep_quality']}
+            - Pain Level: {patient_info['pain_level']}/10
             - Smoking Status: {patient_info['smoking']}
             - Alcohol Consumption: {patient_info['alcohol']}
-            - Exercise Frequency: {patient_info['exercise']}
-            - Sleep Quality: {patient_info['sleep']} ({patient_info['sleep_hours']} hours/night)
-            - Stress Level: {patient_info['stress']}
-            - Occupation: {patient_info['occupation']}
-            - Water Intake: {patient_info['water_intake']} glasses/day
-            - Diet Type: {patient_info['diet_type']}
-            - Meal Frequency: {patient_info['meal_frequency']}
-            - Typical Breakfast: {patient_info['breakfast']}
-            - Typical Lunch: {patient_info['lunch']}
-            - Typical Dinner: {patient_info['dinner']}
-            - Snacks & Beverages: {patient_info['snacks']}
-            - Food Restrictions: {patient_info['food_restrictions']}
-            - Supplements: {patient_info['supplements']}
-            - Family Medical History: {patient_info['family_history']}
-            - Recent Accidents/Injuries: {patient_info['accidents']}
-            - Current Symptoms: {patient_info['symptoms']}
-            - Pain Level: {patient_info['pain_level']}/10
 
             COMPREHENSIVE ANALYSIS REQUIREMENTS:
             1. STATE THE EXACT DISEASE OR PROBLEM in bold at the beginning
@@ -297,23 +230,9 @@ def analyze_medical_scan(image_path, patient_info):
             6. Develop a complete lifestyle modification plan
             7. Correlate findings with patient's current lifestyle and diet
             8. Provide monitoring guidelines and red flags to watch for
-            9. Consider the patient's occupation, stress level, and family history
+            9. Consider all patient factors for comprehensive care
 
-            DIETARY PLAN REQUIREMENTS:
-            - Specific foods to include and avoid
-            - Meal timing and portion recommendations
-            - Recipes or meal ideas if helpful
-            - Supplements needed for recovery/management
-            - Hydration recommendations
-
-            LIFESTYLE PLAN REQUIREMENTS:
-            - Exercise type, duration, and frequency
-            - Sleep schedule optimization
-            - Stress management techniques
-            - Work-life balance recommendations
-            - Daily routine modifications
-
-            Please provide a thorough, empathetic analysis that considers all aspects of the patient's life.
+            Please provide a thorough, empathetic analysis that considers all aspects of the patient's condition.
             Use simple language and explain medical terms clearly.
             Format your response as plain text without section headers or markdown formatting.
             Be encouraging and supportive while being medically accurate.
@@ -326,6 +245,165 @@ def analyze_medical_scan(image_path, patient_info):
         st.error(f"Error during analysis: {e}")
         return None
 
+def create_pdf_report(patient_info, analysis_result):
+    """Create a formal PDF report."""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    
+    # Get styles
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#2E5E8A')
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        spaceAfter=12,
+        spaceBefore=12,
+        textColor=colors.HexColor('#2E5E8A')
+    )
+    
+    body_style = ParagraphStyle(
+        'CustomBody',
+        parent=styles['Normal'],
+        fontSize=11,
+        spaceAfter=6,
+        alignment=TA_JUSTIFY,
+        leading=14
+    )
+    
+    # Build the PDF content
+    story = []
+    
+    # Title
+    story.append(Paragraph("COMPREHENSIVE MEDICAL SCAN ANALYSIS REPORT", title_style))
+    story.append(Spacer(1, 12))
+    
+    # Report Information
+    current_date = datetime.datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    story.append(Paragraph(f"<b>Report Generated:</b> {current_date}", body_style))
+    story.append(Spacer(1, 20))
+    
+    # Patient Information Table
+    bmi = patient_info['weight'] / ((patient_info['height'] / 100) ** 2)
+    bmi_category = "Underweight" if bmi < 18.5 else "Normal" if bmi < 25 else "Overweight" if bmi < 30 else "Obese"
+    
+    patient_data = [
+        ['Patient Demographics', ''],
+        ['Age', f"{patient_info['age']} years"],
+        ['Gender', patient_info['gender']],
+        ['Height', f"{patient_info['height']} cm"],
+        ['Weight', f"{patient_info['weight']} kg"],
+        ['BMI', f"{bmi:.1f} ({bmi_category})"],
+        ['', ''],
+        ['Health Assessment', ''],
+        ['Stress Level', patient_info['stress_level']],
+        ['Exercise Frequency', patient_info['exercise_freq']],
+        ['Sleep Quality', patient_info['sleep_quality']],
+        ['Pain Level', f"{patient_info['pain_level']}/10"],
+        ['Smoking Status', patient_info['smoking']],
+        ['Alcohol Consumption', patient_info['alcohol']]
+    ]
+    
+    table = Table(patient_data, colWidths=[2*inch, 3*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#E8F4FD')),
+        ('BACKGROUND', (0, 7), (-1, 7), colors.HexColor('#E8F4FD')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2E5E8A')),
+        ('TEXTCOLOR', (0, 7), (-1, 7), colors.HexColor('#2E5E8A')),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 7), (-1, 7), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    
+    story.append(table)
+    story.append(Spacer(1, 20))
+    
+    # Medical History Section
+    if patient_info['medical_history'].strip():
+        story.append(Paragraph("Medical History & Current Medications", heading_style))
+        story.append(Paragraph(patient_info['medical_history'], body_style))
+        story.append(Spacer(1, 12))
+    
+    # Lifestyle Information
+    if patient_info['lifestyle_habits'].strip():
+        story.append(Paragraph("Lifestyle Habits", heading_style))
+        story.append(Paragraph(patient_info['lifestyle_habits'], body_style))
+        story.append(Spacer(1, 12))
+    
+    # Current Diet
+    if patient_info['current_diet'].strip():
+        story.append(Paragraph("Current Diet Pattern", heading_style))
+        story.append(Paragraph(patient_info['current_diet'], body_style))
+        story.append(Spacer(1, 12))
+    
+    # Current Symptoms
+    if patient_info['symptoms_concerns'].strip():
+        story.append(Paragraph("Current Symptoms & Concerns", heading_style))
+        story.append(Paragraph(patient_info['symptoms_concerns'], body_style))
+        story.append(Spacer(1, 12))
+    
+    # Analysis Results
+    story.append(Paragraph("COMPREHENSIVE ANALYSIS & RECOMMENDATIONS", heading_style))
+    story.append(Spacer(1, 12))
+    
+    # Split analysis into paragraphs for better formatting
+    analysis_paragraphs = analysis_result.split('\n\n')
+    for paragraph in analysis_paragraphs:
+        if paragraph.strip():
+            story.append(Paragraph(paragraph.strip(), body_style))
+            story.append(Spacer(1, 8))
+    
+    # Disclaimer
+    story.append(Spacer(1, 20))
+    disclaimer_style = ParagraphStyle(
+        'Disclaimer',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=6,
+        alignment=TA_JUSTIFY,
+        leading=12,
+        textColor=colors.HexColor('#666666')
+    )
+    
+    story.append(Paragraph("<b>MEDICAL DISCLAIMER</b>", heading_style))
+    story.append(Paragraph(
+        "This AI-generated analysis is for informational and educational purposes only and should not replace professional medical consultation. "
+        "The recommendations provided are based on general medical knowledge and should be reviewed with qualified healthcare professionals "
+        "before implementation. Always consult with your doctor, specialist, or certified healthcare provider for proper diagnosis, treatment, "
+        "and personalized medical advice. In case of medical emergencies, seek immediate professional medical attention.",
+        disclaimer_style
+    ))
+    
+    # Footer
+    story.append(Spacer(1, 20))
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=9,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#888888')
+    )
+    story.append(Paragraph(f"Report generated by Medical Scan Analyzer | {current_date}", footer_style))
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
 def save_uploaded_file(uploaded_file):
     """Save the uploaded file to disk."""
     try:
@@ -336,56 +414,6 @@ def save_uploaded_file(uploaded_file):
     except Exception as e:
         st.error(f"Error saving uploaded file: {e}")
         return None
-
-def create_report_for_download(patient_info, analysis_result):
-    """Create a formatted report for download."""
-    current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    bmi = patient_info['weight'] / ((patient_info['height'] / 100) ** 2)
-    
-    report = f"""
-COMPREHENSIVE MEDICAL SCAN ANALYSIS REPORT
-Generated on: {current_date}
-
-PATIENT INFORMATION:
-Age: {patient_info['age']}
-Gender: {patient_info['gender']}
-Height: {patient_info['height']} cm
-Weight: {patient_info['weight']} kg
-BMI: {bmi:.1f}
-Previous Medical Conditions: {patient_info['previous_conditions']}
-Current Medications: {patient_info['current_medications']}
-Allergies: {patient_info['allergies']}
-Smoking Status: {patient_info['smoking']}
-Alcohol Consumption: {patient_info['alcohol']}
-Exercise Frequency: {patient_info['exercise']}
-Sleep Quality: {patient_info['sleep']} ({patient_info['sleep_hours']} hours/night)
-Stress Level: {patient_info['stress']}
-Occupation: {patient_info['occupation']}
-Water Intake: {patient_info['water_intake']} glasses/day
-
-DIETARY INFORMATION:
-Diet Type: {patient_info['diet_type']}
-Meal Frequency: {patient_info['meal_frequency']}
-Typical Breakfast: {patient_info['breakfast']}
-Typical Lunch: {patient_info['lunch']}
-Typical Dinner: {patient_info['dinner']}
-Snacks & Beverages: {patient_info['snacks']}
-Food Restrictions: {patient_info['food_restrictions']}
-Supplements: {patient_info['supplements']}
-
-MEDICAL HISTORY:
-Family Medical History: {patient_info['family_history']}
-Recent Accidents/Injuries: {patient_info['accidents']}
-Current Symptoms: {patient_info['symptoms']}
-Pain Level: {patient_info['pain_level']}/10
-
-ANALYSIS RESULTS:
-{analysis_result}
-
-DISCLAIMER:
-This AI analysis is for informational purposes only and should not replace professional medical consultation. Always consult with qualified healthcare professionals for proper diagnosis and treatment. The dietary and lifestyle recommendations should be reviewed with your healthcare provider before implementation.
-"""
-    return report
 
 def main():
     # Page configuration with light theme
@@ -456,7 +484,7 @@ def main():
     
     # Header
     st.markdown('<h1 class="main-title">🩺 Enhanced Medical Scan Analyzer</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Upload your medical scan report for comprehensive AI-powered analysis with personalized diet and lifestyle recommendations</p>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Upload your medical scan report for comprehensive AI-powered analysis with personalized recommendations</p>', unsafe_allow_html=True)
     
     # File upload section
     st.subheader("📁 Upload Medical Scan Report")
@@ -480,7 +508,7 @@ def main():
     patient_info = collect_patient_information()
     
     # Analysis button - only show if file is uploaded
-    if uploaded_file and st.button("🔬 Analyze Medical Scan & Create Personalized Plan", type="primary"):
+    if uploaded_file and st.button("🔬 Analyze Medical Scan & Generate Report", type="primary"):
         if all([patient_info['age'], patient_info['gender'], patient_info['height'], patient_info['weight']]):
             temp_path = save_uploaded_file(uploaded_file)
             if temp_path:
@@ -493,16 +521,16 @@ def main():
                     # Display analysis in a styled container
                     st.markdown(f'<div class="analysis-result">{analysis_result}</div>', unsafe_allow_html=True)
                     
-                    # Create download button
-                    report_content = create_report_for_download(patient_info, analysis_result)
+                    # Create PDF download button
+                    pdf_buffer = create_pdf_report(patient_info, analysis_result)
                     current_date = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                     
                     st.download_button(
-                        label="📥 Download Complete Analysis Report",
-                        data=report_content,
-                        file_name=f"comprehensive_medical_analysis_{current_date}.txt",
-                        mime="text/plain",
-                        help="Download the complete analysis report with personalized recommendations"
+                        label="📥 Download PDF Report",
+                        data=pdf_buffer,
+                        file_name=f"Medical_Analysis_Report_{current_date}.pdf",
+                        mime="application/pdf",
+                        help="Download the complete analysis report as a professional PDF document"
                     )
                 
                 os.unlink(temp_path)  # Clean up after analysis
